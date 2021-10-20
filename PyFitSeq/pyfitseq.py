@@ -280,6 +280,10 @@ def main():
     parser.add_argument('-t', '--t_seq', nargs='*', type=float, help='sequenced time-points in number of generations')
     parser.add_argument('-m', '--max_iter_num', type=int, default=10,
                         help='maximum number of iterations in the optimization')
+    parser.add_argument('--min-iter', type=int, default=0,
+        help='Force FitSeq to run at least this many iterations in the '+
+            'optimization'
+        )
     parser.add_argument('-k', '--kappa', type=float, default=2.5,
                         help='a noise parameter that characterizes the total noise introduced by growth, '
                              'cell transfer, DNA extraction, PCR, and sequencing (To measure kappa empirically, '
@@ -295,6 +299,7 @@ def main():
     read_num_seq = np.array(pd.read_csv(args.input, header=None), dtype=float)
     t_seq = np.array(args.t_seq, dtype=float)
     max_iter_num = args.max_iter_num
+    min_iter = args.min_iter
     kappa = args.kappa
     regression_num = args.regression_num
     fitness_type = args.fitness_type
@@ -342,8 +347,15 @@ def main():
     step_size = 1 / lineages_num
     iter_num = 0
 
-    #while (likelihood_log_sum_iter[-1] - likelihood_log_sum_iter[-2] >= step_size) and (iter_num <= max_iter_num):
-    while (iter_num <= 6):
+    while ( 
+            iter_num <= max_iter_num
+            and
+            (
+                iter_num <= min_iter
+                or 
+                (likelihood_log_sum_iter[-1] - likelihood_log_sum_iter[-2] >= step_size)
+                )
+            ):
         if fitness_type == 'w':
             for i in range(lineages_num):
                 x0_lineage = x_opt[i]
