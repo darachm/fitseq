@@ -359,6 +359,12 @@ def main():
     for i in range(1, seq_num):
         read_num_min_seq[:, i] = read_num_min_seq[:, i - 1] / 2 ** (t_seq[i] - t_seq[i - 1])
 
+    if fitness_type == 'w':
+        print('Estimating Wrightian fitness for %d genotypes:' %lineages_num)
+    elif fitness_type == 'm':
+        print('Estimating Malthusian fitness for %d genotypes:' %lineages_num)
+    print('---- Initial guess...')
+
     read_freq_seq = read_num_seq / read_depth_seq
     if fitness_type == 'w':
         if regression_num == 2:
@@ -370,11 +376,14 @@ def main():
         x0 = (1 + x0_tempt) / (1 + np.dot(read_freq_seq[:, 0], x0_tempt)) - 1  # Normalization
     elif fitness_type == 'm':
         if regression_num == 2:
+
             x0_tempt = np.true_divide(read_freq_seq[:, 1] - read_freq_seq[:, 0], t_seq[1] - t_seq[0])
         else:
             x0_tempt = [regression_output.slope for i in range(lineages_num) for regression_output in
                         [linregress(t_seq[0:regression_num], np.log(read_freq_seq[i, 0:regression_num]))]]
         x0 = x0_tempt - np.dot(read_freq_seq[:, 0], x0_tempt)  # Normalization
+
+    print('---- Optimization...')
 
     x_opt = np.copy(x0)
 
@@ -385,7 +394,8 @@ def main():
     x_mean_global = parameter_output['Estimated_Mean_Fitness']
     likelihood_log_sum_iter = [-1e50 * lineages_num, np.sum(parameter_output['Likelihood_Log'])]
     step_size = 1 / lineages_num
-    iter_num = 0
+
+    iter_num = 1
 
     while ( 
             iter_num <= max_iter_num
@@ -396,6 +406,9 @@ def main():
                 (likelihood_log_sum_iter[-1] - likelihood_log_sum_iter[-2] >= step_size)
                 )
             ):
+
+        print('-------- Iteration #%d:' %iter_num)
+
         if fitness_type == 'w':
             for i in tqdm(range(lineages_num)):
                 x0_lineage = x_opt[i]
@@ -425,7 +438,7 @@ def main():
         likelihood_log_sum_iter.append(np.sum(parameter_output['Likelihood_Log']))
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
         iter_num += 1
-        print('Iteration ' + str(iter_num) + ': ' + str(likelihood_log_sum_iter[-1]))
+        print('         likelihood value (log): %.4f' %likelihood_log_sum_iter[-1])
 
     read_num_seq_est = parameter_output['Estimated_Read_Number']
     x_opt = x_opt - np.dot(read_num_seq_est[:, 0], x_opt) / np.sum(read_num_seq_est[:, 0])
@@ -433,11 +446,10 @@ def main():
     x_mean_est = parameter_output_final['Estimated_Mean_Fitness']
     likelihood_log = parameter_output_final['Likelihood_Log']
 
-    #fitseq_output = {'Estimated_Fitness': x_opt,
-    #                 'Likelihood_Log': likelihood_log,
-    #                 'Estimated_Mean_Fitness': x_mean_est,
-    #                 'Estimated_Read_Number': read_num_seq_est.astype(int)}
+    print('---- Saving data...')
+
     fitseq_output = {'Estimated_Fitness': x_opt,
+                     'Estimation_Error': estimation_error,
                      'Likelihood_Log': likelihood_log,
                      'Estimated_Mean_Fitness': x_mean_est}
     for i in range(read_num_seq_est.shape[1]):
@@ -448,6 +460,8 @@ def main():
         w = csv.writer(f)
         w.writerow(fitseq_output.keys())
         w.writerows(tempt)
+
+    print('Finished!')
 
 
 if __name__ == "__main__":
