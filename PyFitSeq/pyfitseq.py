@@ -8,6 +8,7 @@ import itertools
 import csv
 from scipy.stats import linregress
 from scipy.optimize import minimize
+from tqdm import tqdm
 
 read_num_seq_lineage_global = None
 read_num_min_seq_lineage_global = None
@@ -396,7 +397,7 @@ def main():
                 )
             ):
         if fitness_type == 'w':
-            for i in range(lineages_num):
+            for i in tqdm(range(lineages_num)):
                 x0_lineage = x_opt[i]
                 read_num_seq_lineage_global = read_num_seq[i, :]
                 read_num_min_seq_lineage_global = read_num_min_seq[i, :]
@@ -408,7 +409,7 @@ def main():
                                   np.sum(read_num_seq[:, 1], axis=0)) > 2 ** (t_seq[1] - t_seq[0])) | (x_opt <= -1)
             x_opt[pos] = x0[pos]
         elif fitness_type == 'm':
-            for i in range(lineages_num):
+            for i in tqdm(range(lineages_num)):
                 x0_lineage = x_opt[i]
                 read_num_seq_lineage_global = read_num_seq[i, :]
                 read_num_min_seq_lineage_global = read_num_min_seq[i, :]
