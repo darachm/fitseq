@@ -9,6 +9,7 @@ import csv
 from scipy.stats import linregress
 from scipy.optimize import minimize
 from tqdm import tqdm
+from scipy.misc import derivative
 
 read_num_seq_lineage_global = None
 read_num_min_seq_lineage_global = None
@@ -47,14 +48,12 @@ def fun_estimate_parameters(x, read_num_seq, t_seq, kappa=2.5, fitness_type='m')
     """
 
     read_num_seq = read_num_seq.astype(float)
-    read_num_seq[read_num_seq == 0] = 1e-1
-    read_depth_seq = np.sum(read_num_seq, axis=0)
-    lineages_num, seq_num = read_num_seq.shape
 
-    read_num_min_seq = np.zeros((lineages_num, seq_num))
-    read_num_min_seq[:, 0] = read_num_seq[:, 0]
-    for i in range(1, seq_num):
-        read_num_min_seq[:, i] = read_num_min_seq[:, i - 1] / 2 ** (t_seq[i] - t_seq[i - 1])
+    lineages_num, seq_num = read_num_seq.shape
+    for k in range(seq_num):
+        read_num_seq[read_num_seq[:, k] < 1, k] = 1
+
+    read_depth_seq = np.sum(read_num_seq, axis=0)
 
     x[x <= -1] = -1 + 1e-7
 
@@ -71,7 +70,7 @@ def fun_estimate_parameters(x, read_num_seq, t_seq, kappa=2.5, fitness_type='m')
                                         * ((x_mean[i] + 1) * np.log(x_mean[i] + 1)
                                            - (x_mean[i - 1] + 1) * np.log(x_mean[i - 1] + 1)))
             read_num_est_tempt = read_num_est_tempt * read_num_seq[:, i - 1] / read_depth_seq[i - 1] * read_depth_seq[i]
-            read_num_seq_est[:, i] = np.max([read_num_est_tempt, read_num_min_seq[:, i]], axis=0)
+            read_num_seq_est[:, i] = read_num_est_tempt
             x_mean[i] = np.dot(x, read_num_seq_est[:, i]) / np.sum(read_num_seq_est[:, i])
 
     elif fitness_type == 'm':
@@ -80,13 +79,13 @@ def fun_estimate_parameters(x, read_num_seq, t_seq, kappa=2.5, fitness_type='m')
             read_num_est_tempt = np.exp((t_seq[i] - t_seq[i - 1]) * x
                                         - (t_seq[i] - t_seq[i - 1]) * (x_mean[i] + x_mean[i - 1]) / 2)
             read_num_est_tempt = read_num_est_tempt * read_num_seq[:, i - 1] / read_depth_seq[i - 1] * read_depth_seq[i]
-            read_num_seq_est[:, i] = np.max([read_num_est_tempt, read_num_min_seq[:, i]], axis=0)
+            read_num_seq_est[:, i] = read_num_est_tempt
             x_mean[i] = np.dot(x, read_num_seq_est[:, i]) / np.sum(read_num_seq_est[:, i])
 
     pos1_r, pos1_c = np.where(read_num_seq[:, :-1] >= 20)
     likelihood_log_seq[pos1_r, pos1_c + 1] = (0.25 * np.log(read_num_seq_est[pos1_r, pos1_c + 1])
                                               - 0.5 * np.log(4 * np.pi * kappa)
-                                              - 0.75 * np.log(read_num_seq_est[pos1_r, pos1_c + 1])
+                                              - 0.75 * np.log(read_num_seq[pos1_r, pos1_c + 1])
                                               - (np.sqrt(read_num_seq[pos1_r, pos1_c + 1])
                                                  - np.sqrt(read_num_seq_est[pos1_r, pos1_c + 1])) ** 2 / kappa)
 
@@ -137,14 +136,13 @@ def fun_likelihood_lineage_w(x):
     """
 
     global read_num_seq_lineage_global
-    global read_num_min_seq_lineage_global
     global read_depth_seq_global
     global t_seq_global
     global kappa_global
     global x_mean_global
 
-    if x <= -1:
-        x = -1 + 1e-7
+    x = np.max([x, -1+1e-7])
+    #x = (x >= -1+1e-7)*x + (x < -1+1e-7)*-1+1e-7
     seq_num = read_num_seq_lineage_global.shape[0]
     read_num_seq_lineage_est = np.zeros(seq_num)
     read_num_seq_lineage_est[0] = read_num_seq_lineage_global[0]
@@ -156,14 +154,13 @@ def fun_likelihood_lineage_w(x):
                                                     x_mean_global[i] - x_mean_global[i - 1])
                                             * ((x_mean_global[i] + 1) * np.log(x_mean_global[i] + 1)
                                                - (x_mean_global[i - 1] + 1) * np.log(x_mean_global[i - 1] + 1)))
-        read_num_lineage_est_tempt = (read_num_lineage_est_tempt * read_num_seq_lineage_global[i - 1]
+        read_num_seq_lineage_est[i] = (read_num_lineage_est_tempt * read_num_seq_lineage_global[i - 1]
                                       / read_depth_seq_global[i - 1] * read_depth_seq_global[i])
-        read_num_seq_lineage_est[i] = np.max([read_num_lineage_est_tempt.item(), read_num_min_seq_lineage_global[i]])
 
     pos1 = np.where(read_num_seq_lineage_global[:-1] >= 20)[0]
     likelihood_log_seq_lineage[pos1 + 1] = (0.25 * np.log(read_num_seq_lineage_est[pos1 + 1])
                                             - 0.5 * np.log(4 * np.pi * kappa_global)
-                                            - 0.75 * np.log(read_num_seq_lineage_est[pos1 + 1])
+                                            - 0.75 * np.log(read_num_seq_lineage_global[pos1 + 1])
                                             - (np.sqrt(read_num_seq_lineage_global[pos1 + 1])
                                                - np.sqrt(read_num_seq_lineage_est[pos1 + 1])) ** 2 / kappa_global)
 
@@ -206,14 +203,14 @@ def fun_likelihood_lineage_m(x):
     """
 
     global read_num_seq_lineage_global
-    global read_num_min_seq_lineage_global
     global read_depth_seq_global
     global t_seq_global
     global kappa_global
     global x_mean_global
 
-    if x <= -1:
-        x = -1 + 1e-7
+    x = np.max([x, -1+1e-7])
+    #x = (x >= -1+1e-7)*x + (x < -1+1e-7)*-1+1e-7
+
     seq_num = read_num_seq_lineage_global.shape[0]
     read_num_seq_lineage_est = np.zeros(seq_num)
     read_num_seq_lineage_est[0] = read_num_seq_lineage_global[0]
@@ -223,14 +220,13 @@ def fun_likelihood_lineage_m(x):
         read_num_lineage_est_tempt = np.exp((t_seq_global[i] - t_seq_global[i - 1]) * x
                                             - (t_seq_global[i] - t_seq_global[i - 1]) *
                                             (x_mean_global[i] + x_mean_global[i - 1]) / 2)
-        read_num_lineage_est_tempt = (read_num_lineage_est_tempt * read_num_seq_lineage_global[i - 1]
+        read_num_seq_lineage_est[i] = (read_num_lineage_est_tempt * read_num_seq_lineage_global[i - 1]
                                       / read_depth_seq_global[i - 1] * read_depth_seq_global[i])
-        read_num_seq_lineage_est[i] = np.max([read_num_lineage_est_tempt.item(), read_num_min_seq_lineage_global[i]])
 
     pos1 = np.where(read_num_seq_lineage_global[:-1] >= 20)[0]
     likelihood_log_seq_lineage[pos1 + 1] = (0.25 * np.log(read_num_seq_lineage_est[pos1 + 1])
                                             - 0.5 * np.log(4 * np.pi * kappa_global)
-                                            - 0.75 * np.log(read_num_seq_lineage_est[pos1 + 1])
+                                            - 0.75 * np.log(read_num_seq_lineage_global[pos1 + 1])
                                             - (np.sqrt(read_num_seq_lineage_global[pos1 + 1])
                                                - np.sqrt(read_num_seq_lineage_est[pos1 + 1])) ** 2 / kappa_global)
 
@@ -293,7 +289,6 @@ def main():
     """
 
     global read_num_seq_lineage_global
-    global read_num_min_seq_lineage_global
     global read_depth_seq_global
     global t_seq_global
     global kappa_global
@@ -345,25 +340,18 @@ def main():
     fitness_type = args.fitness_type
     output_filename = args.output_filename
 
-    for i in range(regression_num):
-        pos_zero = np.where(read_num_seq[:, i] < 1)
-        read_num_seq[pos_zero, i] = 1
-    # pos_zero = np.where(read_num_seq[:, 0] < 1)
-    # read_num_seq[pos_zero, 0] = 1
-
-    read_num_seq[read_num_seq == 0] = 1e-1
-    read_depth_seq = np.sum(read_num_seq, axis=0)
     lineages_num, seq_num = read_num_seq.shape
-    read_num_min_seq = np.zeros((lineages_num, seq_num))
-    read_num_min_seq[:, 0] = read_num_seq[:, 0]
-    for i in range(1, seq_num):
-        read_num_min_seq[:, i] = read_num_min_seq[:, i - 1] / 2 ** (t_seq[i] - t_seq[i - 1])
 
     if fitness_type == 'w':
         print('Estimating Wrightian fitness for %d genotypes:' %lineages_num)
     elif fitness_type == 'm':
         print('Estimating Malthusian fitness for %d genotypes:' %lineages_num)
     print('---- Initial guess...')
+
+    for k in range(seq_num):
+        read_num_seq[read_num_seq[:, k] < 1, k] = 1
+    
+    read_depth_seq = np.sum(read_num_seq, axis=0)
 
     read_freq_seq = read_num_seq / read_depth_seq
     if fitness_type == 'w':
@@ -413,9 +401,14 @@ def main():
             for i in tqdm(range(lineages_num)):
                 x0_lineage = x_opt[i]
                 read_num_seq_lineage_global = read_num_seq[i, :]
-                read_num_min_seq_lineage_global = read_num_min_seq[i, :]
-                opt_output_lineage = minimize(fun_likelihood_lineage_w, x0_lineage, method='BFGS',
-                                              options={'disp': False, 'maxiter': 50})
+
+                opt_output_lineage = minimize(
+                    fun_likelihood_lineage_w, 
+                    x0_lineage, 
+                    method='BFGS',
+                    options={'disp': False, 'maxiter': 50}
+                    )
+
                 x_opt[i] = opt_output_lineage['x'][0]
 
             pos = (np.true_divide(read_num_seq[:, 0] / np.sum(read_num_seq[:, 0], axis=0),
@@ -425,9 +418,14 @@ def main():
             for i in tqdm(range(lineages_num)):
                 x0_lineage = x_opt[i]
                 read_num_seq_lineage_global = read_num_seq[i, :]
-                read_num_min_seq_lineage_global = read_num_min_seq[i, :]
-                opt_output_lineage = minimize(fun_likelihood_lineage_m, x0_lineage, method='BFGS',
-                                              options={'disp': False, 'maxiter': 50})
+
+                opt_output_lineage = minimize(
+                    fun_likelihood_lineage_m, 
+                    x0_lineage, 
+                    method='BFGS',
+                    options={'disp': False, 'maxiter': 50}
+                    )
+
                 x_opt[i] = opt_output_lineage['x'][0]
 
             pos = (np.true_divide(read_num_seq[:, 0] / np.sum(read_num_seq[:, 0], axis=0),
@@ -439,6 +437,15 @@ def main():
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
         iter_num += 1
         print('         likelihood value (log): %.4f' %likelihood_log_sum_iter[-1])
+
+    second_derivative = np.zeros(lineages_num)
+    if fitness_type == 'w':
+        for i in range(lineages_num):
+            second_derivative[i] = derivative(fun_likelihood_lineage_w, x_opt[i], dx=1e-6, n=2)
+    elif fitness_type == 'm':
+        for i in range(lineages_num):
+            second_derivative[i] = derivative(fun_likelihood_lineage_m, x_opt[i], dx=1e-6, n=2)
+    estimation_error = 1/np.sqrt(second_derivative)
 
     read_num_seq_est = parameter_output['Estimated_Read_Number']
     x_opt = x_opt - np.dot(read_num_seq_est[:, 0], x_opt) / np.sum(read_num_seq_est[:, 0])
