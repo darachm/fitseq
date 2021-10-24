@@ -18,26 +18,33 @@ x_mean_global = None
 
 
 def fun_estimate_parameters(x, read_num_seq, t_seq, kappa=2.5, fitness_type='m'):
-    # ------------------------------------------------------------------------------------------------------------------
-    # A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE LOG LIKELIHOOD VALUE OF EACH GENOTYPE GIVEN ITS
-    # FITNESS, THE ESTIMATED READ NUMBER PER GENOTYPE PER SEQUENCING TIME-POINT, AND THE ESTIMATED MEAN FITNESS PER
-    # SEQUENCING TIME-POINT
-    #
-    # INPUTS
-    # --x: fitness of each genotype, [x1, x2, ...]
-    # --read_num_seq: read number per genotype at each sequencing time-point
-    # --t_seq: sequenced time-points in number of generations, [0, t1, t2, ...]
-    # --kappa: a noise parameter that characterizes the total noise introduced by growth, cell transfer, DNA extraction, 
-    #          PCR, and sequencing (To measure kappa empirically, see the reference: [S. F. Levy, et al. Quantitative 
-    #          Evolutionary Dynamics Using High-resolution Lineage Tracking. Nature, 519: 181–186 (2015)].) 
-    # .        (default: 2.5)
-    # --fitness_type: type of fitness: Wrightian fitness (w), or Malthusian fitness (m)' (default: m)
-    #
-    # OUTPUTS
-    # --estimate_parameters_output: log likelihood value of each genotype,
-    #                               estimated reads number per genotype per sequencing time-point,
-    #                               estimated mean fitness per sequencing time-point, [x_mean(t0),x_mean(t1),...]
-    # ------------------------------------------------------------------------------------------------------------------
+    """
+    ----------------------------------------------------------------------------
+    A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE LOG LIKELIHOOD 
+    VALUE OF EACH GENOTYPE GIVEN ITS FITNESS, THE ESTIMATED READ NUMBER PER 
+    GENOTYPE PER SEQUENCING TIME-POINT, AND THE ESTIMATED MEAN FITNESS PER 
+    SEQUENCING TIME-POINT
+    
+    INPUTS
+    -- x: fitness of each genotype, [x1, x2, ...]
+    -- read_num_seq: read number per genotype at each sequencing time-point
+    -- t_seq: sequenced time-points in number of generations, [0, t1, t2, ...]
+    -- kappa: a noise parameter that characterizes the total noise introduced 
+              by growth, cell transfer, DNA extraction, PCR, and sequencing 
+              (default: 2.5) (To measure kappa empirically, see the reference: 
+              [S. F. Levy et al. Quantitative Evolutionary Dynamics Using 
+              High-resolution Lineage Tracking. Nature, 519: 181–186 (2015)].) 
+    -- fitness_type: type of fitness: Wrightian fitness (w), or Malthusian 
+                     fitness (m) (default: m)
+    
+    OUTPUTS
+    -- estimate_parameters_output: log-likelihood value of each genotype, 
+                                   estimated reads number per genotype per 
+                                   sequencing time-point, estimated mean fitness 
+                                   per sequencing time-point
+    ----------------------------------------------------------------------------
+    """
+
     read_num_seq = read_num_seq.astype(float)
     read_num_seq[read_num_seq == 0] = 1e-1
     read_depth_seq = np.sum(read_num_seq, axis=0)
@@ -114,16 +121,20 @@ def fun_estimate_parameters(x, read_num_seq, t_seq, kappa=2.5, fitness_type='m')
 
 
 def fun_likelihood_lineage_w(x):
-    # ------------------------------------------------------------------------------------------------------------------
-    # A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE SUM OF THE NEGATIVE LOG LIKELIHOOD VALUE OF ALL
-    # GENOTYPES GIVEN THE WRIGHTIAN FITNESS OF EACH GENOTYPE
-    #
-    # INPUTS
-    # --x: fitness of a genotype
-    #
-    # OUTPUTS
-    # --likelihood_log_lineage: the negative log likelihood value of the genotype
-    # ------------------------------------------------------------------------------------------------------------------
+    """
+    ----------------------------------------------------------------------------
+    A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE SUM OF THE 
+    NEGATIVE LOG LIKELIHOOD VALUE OF A GENOTYPE GIVEN THE WRIGHTIAN FITNESS 
+    OF EACH GENOTYPE FOR ALL SEQUENCING TIME-POINTS
+    
+    INPUTS
+    -- x: fitness of a genotype
+    
+    OUTPUTS
+    -- likelihood_log_lineage: the negative log-likelihood value of the genotype
+    ----------------------------------------------------------------------------
+    """
+
     global read_num_seq_lineage_global
     global read_num_min_seq_lineage_global
     global read_depth_seq_global
@@ -179,16 +190,20 @@ def fun_likelihood_lineage_w(x):
 
 
 def fun_likelihood_lineage_m(x):
-    # ------------------------------------------------------------------------------------------------------------------
-    # A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE SUM OF THE NEGATIVE LOG LIKELIHOOD VALUE OF ALL
-    # GENOTYPES GIVEN THE MALTHUSIAN FITNESS OF EACH GENOTYPE
-    #
-    # INPUTS
-    # --x: fitness of a genotype
-    #
-    # OUTPUTS
-    # --likelihood_log_lineage: the negative log likelihood value of the genotype
-    # ------------------------------------------------------------------------------------------------------------------
+    """
+    ----------------------------------------------------------------------------
+    A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE SUM OF THE 
+    NEGATIVE LOG LIKELIHOOD VALUE OF A GENOTYPE GIVEN THE MALTHUSIAN FITNESS 
+    OF EACH GENOTYPE FOR ALL SEQUENCING TIME-POINTS
+    
+    INPUTS
+    -- x: fitness of a genotype
+    
+    OUTPUTS
+    -- likelihood_log_lineage: the negative log-likelihood value of the genotype
+    ----------------------------------------------------------------------------
+    """
+
     global read_num_seq_lineage_global
     global read_num_min_seq_lineage_global
     global read_depth_seq_global
@@ -242,30 +257,40 @@ def fun_likelihood_lineage_m(x):
 
 
 def main():
-    # ------------------------------------------------------------------------------------------------------------------
-    # ESTIMATE FITNESS OF EACH GENOTYPE IN A COMPETITIVE POOLED GROWTH EXPERIMENT
-    #
-    # OPTIONS
-    # --input: a .csv file, with each column being the read number per genotype at each sequenced time-point
-    # --t_seq: sequenced time-points in number of generations (format: 0 t1 t2 ...)
-    # --max_iter_num: maximum number of iterations in the optimization (Small numbers can reduce running time 
-    #                 and decrease accuracy.) (default: 10)
-    # --kappa: a noise parameter that characterizes the total noise introduced by growth, cell transfer, 
-    #          DNA extraction, PCR, and sequencing (To measure kappa empirically, see the reference: 
-    #          [S. F. Levy, et al. Quantitative Evolutionary Dynamics Using High-resolution Lineage Tracking. 
-    #          Nature, 519: 181–186 (2015)].) (default: 2.5)
-    # --regression_num: number of points used in the initial linear-regression-based fitness estimate (default: 2)
-    # --fitness_type: type of fitness: Wrightian fitness (w), or Malthusian fitness (m)' (default: m)
-    # --output_filename: prefix of output .csv files (default: output)
-    #
-    # OUTPUTS
-    # output_filename_FitSeq_Result.csv: 1st column: estimated fitness of each genotype, [x1, x2, ...],
-    #                                    2nd column: log likelihood value of each genotype, [f1, f2, ...],
-    #                                    3rd column: estimated mean fitness per sequenced time-point
-    #                                                [x_mean(0), x_mean(t1), ...],
-    #                                    4th column+: estimated reads number per genotype per sequencingtime-point, 
-    #                                                 with each time-point being a column
-    # ------------------------------------------------------------------------------------------------------------------
+    """
+    ----------------------------------------------------------------------------
+    ESTIMATE FITNESS OF EACH GENOTYPE IN A COMPETITIVE POOLED GROWTH EXPERIMENT
+    
+    OPTIONS
+    -- input: a .csv file, with each column being the read number per genotype 
+              at each sequenced time-point
+    -- t_seq: a .csv file, with a column of sequenced time-points in number of 
+              generations
+    -- max_iter_num: maximum number of iterations in the optimization (Small 
+                     numbers can reduce running time and decrease accuracy.) 
+                     (default: 10)
+    -- kappa: a noise parameter that characterizes the total noise introduced by 
+              growth, cell transfer, DNA extraction, PCR, and sequencing. 
+              (default: 2.5) (To measure kappa empirically, see the reference: 
+              [S. F. Levy et al. Quantitative Evolutionary Dynamics Using 
+              High-resolution Lineage Tracking. Nature, 519: 181–186 (2015)].) 
+    -- regression_num: number of points used in the initial linear-regression-based 
+                       fitness estimate (default: 2)
+    -- fitness_type: type of fitness: Wrightian fitness (w), or Malthusian fitness 
+                     (m) (default: m)
+    -- output_filename: prefix of output .csv files (default: output)
+    
+    OUTPUTS
+    output_filename_FitSeq_Result.csv: 1st column: estimated fitness of each genotype, 
+                                       [x1, x2, ...], 2nd column: log likelihood value 
+                                       of each genotype, [f1, f2, ...], 3rd column: 
+                                       estimated mean fitness per sequenced time-point 
+                                       [x_mean(0), x_mean(t1), ...], 4th column+: 
+                                       estimated reads number per genotype per sequencing 
+                                       time-point, with each time-point being a column
+    ----------------------------------------------------------------------------
+    """
+
     global read_num_seq_lineage_global
     global read_num_min_seq_lineage_global
     global read_depth_seq_global
@@ -273,27 +298,41 @@ def main():
     global kappa_global
     global x_mean_global
 
-    parser = argparse.ArgumentParser(description='Estimate fitness of each genotype in a competitive pooled growth '
-                                                 'experiment', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-i', '--input', type=str, help='a .csv file: with each column being the read number per '
-                                                        'genotype at each sequenced time-point')
-    parser.add_argument('-t', '--t_seq', nargs='*', type=float, help='sequenced time-points in number of generations')
+    parser = argparse.ArgumentParser(
+        description='Estimate fitness of each genotype in a competitive '
+            'pooled growth experiment',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('-i', '--input', type=str, 
+        help='a .csv file: with each column being the read number per '
+            'genotype at each sequenced time-point')
+    parser.add_argument('-t', '--t_seq', nargs='*', type=float,
+        help='sequenced time-points in number of generations')
+
     parser.add_argument('-m', '--max_iter_num', type=int, default=10,
                         help='maximum number of iterations in the optimization')
     parser.add_argument('--min-iter', type=int, default=0,
-        help='Force FitSeq to run at least this many iterations in the '+
-            'optimization'
-        )
+        help='Force FitSeq to run at least this many iterations in the '
+            'optimization')
+
     parser.add_argument('-k', '--kappa', type=float, default=2.5,
-                        help='a noise parameter that characterizes the total noise introduced by growth, '
-                             'cell transfer, DNA extraction, PCR, and sequencing (To measure kappa empirically, '
-                             'see the reference: [S. F. Levy, et al. Quantitative Evolutionary Dynamics Using '
-                             'High-resolution Lineage Tracking. Nature, 519: 181–186 (2015)].)')
+        help='a noise parameter that characterizes the total '
+             'noise introduced by growth, cell transfer, DNA '
+             'extraction, PCR, and sequencing (To measure kappa '
+             'empirically, see the reference: [S. F. Levy et al. '
+             'Quantitative Evolutionary Dynamics Using '
+             'High-resolution Lineage Tracking. Nature, 519: '
+             '181–186 (2015)].)')
+
     parser.add_argument('-g', '--regression_num', type=int, default=2,
-                        help='number of points used in the initial linear-regression-based fitness estimate')
-    parser.add_argument('-f', '--fitness_type', type=str, default='m',
-                        help='type of fitness: Wrightian fitness (w), or Malthusian fitness (m)')
-    parser.add_argument('-o', '--output_filename', type=str, default='output', help='prefix of output .csv files')
+        help='number of points used in the initial '
+             'linear-regression-based fitness estimate')
+    parser.add_argument('-f', '--fitness_type', type=str, default='m', 
+        choices = ['m', 'w'],
+        help='type of fitness: Wrightian fitness (w), or '
+             'Malthusian fitness (m)')
+
+    parser.add_argument('-o', '--output_filename', type=str, default='output', 
+        help='prefix of output .csv files')
 
     args = parser.parse_args()
     read_num_seq = np.array(pd.read_csv(args.input, header=None), dtype=float)
@@ -412,3 +451,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
