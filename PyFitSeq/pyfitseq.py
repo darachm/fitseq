@@ -181,8 +181,9 @@ def fun_likelihood_lineage_w(x):
     global kappa_global
     global x_mean_global
 
-    x = np.max([x, -1+1e-7])
+    x = np.max([x.item(), -1+1e-7])
     #x = (x >= -1+1e-7)*x + (x < -1+1e-7)*-1+1e-7
+
     seq_num = read_num_seq_lineage_global.shape[0]
     read_num_seq_lineage_est = np.zeros(seq_num)
     read_num_seq_lineage_est[0] = read_num_seq_lineage_global[0]
