@@ -316,7 +316,7 @@ def main():
         likelihood_log_sum_iter.append(np.sum(likelihood_log))
         print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]))
     
-        if k_iter>=1 and k_iter <= min_iter and likelihood_log_sum_iter[-1] < likelihood_log_sum_iter[-2]:
+        if k_iter>=1 and k_iter >= min_iter and likelihood_log_sum_iter[-1] < likelihood_log_sum_iter[-2]:
             break
 
         pool_obj = Pool()
