@@ -322,7 +322,7 @@ def main():
 
         if (    k_iter>=1 and 
                 k_iter >= min_iter and 
-                (likelihood_log_sum_iter[-2] / likelihood_log_sum_iter[-1]) - 1 <= minimum_step_size)
+                (likelihood_log_sum_iter[-2] / likelihood_log_sum_iter[-1]) - 1 <= minimum_step_size
                 ):
             break
 
