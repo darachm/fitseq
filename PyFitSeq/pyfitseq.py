@@ -232,6 +232,10 @@ def main():
     parser.add_argument('--min-iter', type=int, default=0,
         help='Force FitSeq to run at least this many iterations in the '
             'optimization')
+    parser.add_argument('--min-step','--minimum-step-size', 
+        type=float, default=0.0001,
+        help='Set a minimum fracitonal step size for improvement, if below '
+            'this then the optimization iterations terminate.')
     
     parser.add_argument('-k', '--kappa', type=float, default=2.5,
         help='a noise parameter that characterizes the total '
@@ -264,11 +268,10 @@ def main():
     regression_num = args.regression_num
     fitness_type_global = args.fitness_type
     output_filename = args.output_filename
+    minimum_step_size = args.min_step
     
     lineages_num, seq_num_global = read_num_measure_global.shape
 
-    step_size = 1 / lineages_num
-    
     if fitness_type_global == 'w':
         print('Estimating Wrightian fitness for %d lineages...' %lineages_num)
     elif fitness_type_global == 'm':
@@ -298,7 +301,6 @@ def main():
         x0 = (1 + x0_tempt) / (1 + np.dot(read_freq_seq[:, 0], x0_tempt)) - 1  # normalization
 
     
-    
     ##################################################
     likelihood_log_sum_iter = []
     for k_iter in range(max_iter_num):   
@@ -318,10 +320,9 @@ def main():
         likelihood_log_sum_iter.append(np.sum(likelihood_log))
         print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]))
 
-    
         if (    k_iter>=1 and 
                 k_iter >= min_iter and 
-                (likelihood_log_sum_iter[-1] - likelihood_log_sum_iter[-2] <= step_size)
+                (likelihood_log_sum_iter[-2] / likelihood_log_sum_iter[-1]) - 1 <= minimum_step_size)
                 ):
             break
 
