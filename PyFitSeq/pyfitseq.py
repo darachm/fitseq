@@ -266,6 +266,8 @@ def main():
     output_filename = args.output_filename
     
     lineages_num, seq_num_global = read_num_measure_global.shape
+
+    step_size = 1 / lineages_num
     
     if fitness_type_global == 'w':
         print('Estimating Wrightian fitness for %d lineages...' %lineages_num)
@@ -315,8 +317,12 @@ def main():
    
         likelihood_log_sum_iter.append(np.sum(likelihood_log))
         print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]))
+
     
-        if k_iter>=1 and k_iter >= min_iter and likelihood_log_sum_iter[-1] < likelihood_log_sum_iter[-2]:
+        if (    k_iter>=1 and 
+                k_iter >= min_iter and 
+                (likelihood_log_sum_iter[-1] - likelihood_log_sum_iter[-2] <= step_size)
+                ):
             break
 
         pool_obj = Pool()
