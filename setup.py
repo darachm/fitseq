@@ -11,7 +11,7 @@ setup(
     setup_requires=['setuptools_scm'],
     packages=['PyFitSeq'],
     scripts=['PyFitSeq/evo_simulator.py','PyFitSeq/pyfitseq.py'],
-    install_requires=['numpy>=1.17.3','pandas>=0.25.3','scipy>=1.3.1','tqdm'],
+    install_requires=['numpy>=1.17.3','pandas>=0.25.3','scipy>=1.3.1','tqdm','multiprocessing'],
     license='MIT',
     long_description=long_description,
     long_description_content_type='text/markdown'
