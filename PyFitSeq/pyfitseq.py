@@ -76,10 +76,10 @@ def estimate_parameters(x):
     if fitness_type_global == 'm':  
         for k in range(1, seq_num_global):
 
-            x_mean[k] = np.maximum(
+            x_mean[k] = (
                     np.dot(x, read_num_measure_global[:, k]) / 
-                        read_depth_seq_global[k], 
-                    0)
+                        read_depth_seq_global[k]
+                    )
 
             sum_term[k] = (
                     (t_seq_global[k]-t_seq_global[k-1]) * 
@@ -99,10 +99,10 @@ def estimate_parameters(x):
                         read_depth_seq_global[k]     
                     )
 
-            x_mean[k] = np.maximum(
+            x_mean[k] = (
                     np.dot(x, read_num_theory[:, k]) / 
-                        np.sum(read_num_theory[:, k]),
-                    0)
+                        np.sum(read_num_theory[:, k])
+                    )
 
             sum_term[k] = (
                     (t_seq_global[k]-t_seq_global[k-1]) * 
@@ -212,14 +212,17 @@ def fun_likelihood_lineage_opt(x):
     
     likelihood_log_seq_lineage = np.zeros(seq_num_global, dtype=float)
     
-    pos1 = np.where(read_num_lineage_measure_global[:-1] >= 20)[0]
+    read_threshold = 1
+    pos1 = np.where(read_num_lineage_measure_global[:-1] >= read_threshold)[0]
+    print(pos1)
+    print(read_num_lineage_theory[pos1 + 1])
     likelihood_log_seq_lineage[pos1 + 1] = (0.25 * np.log(read_num_lineage_theory[pos1 + 1])
                                             - 0.5 * np.log(4 * np.pi * kappa_global)
                                             - 0.75 * np.log(read_num_lineage_measure_global[pos1 + 1])
                                             - (np.sqrt(read_num_lineage_measure_global[pos1 + 1])
                                                - np.sqrt(read_num_lineage_theory[pos1 + 1])) ** 2 / kappa_global)
 
-    pos = np.where(read_num_lineage_measure_global[:-1] < 20)[0]
+    pos = np.where(read_num_lineage_measure_global[:-1] < read_threshold)[0]
     pos_p1 = np.where(read_num_lineage_measure_global[pos + 1] >= 10)[0]
     pos_p2 = np.where(read_num_lineage_measure_global[pos + 1] < 10)[0]
     pos2 = pos[pos_p1]
@@ -360,7 +363,11 @@ def main():
         else:
             x0_tempt = [regression_output.slope for i in range(lineages_num) for regression_output in
                         [linregress(t_seq[0:regression_num], np.log(read_freq_seq[i, 0:regression_num]))]]
-        x0 = x0_tempt - np.dot(read_freq_seq[:, 0], x0_tempt)  # normalization
+        print(x0_tempt)
+        print(np.mean(x0_tempt))
+        print(np.median(x0_tempt))
+        print(np.dot(read_freq_seq[:, 0], x0_tempt))
+        x0 = x0_tempt #- np.dot(read_freq_seq[:, 0], x0_tempt)  # normalization
 
     elif fitness_type_global == 'w':
         if regression_num == 2:
@@ -404,6 +411,8 @@ def main():
         else:
             opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
             opt_result = np.array(opt_result)
+
+        print(opt_result)
         
         
     ################################################## estimation error
@@ -415,7 +424,7 @@ def main():
 
     read_num_theory = parameter_output['Estimated_Read_Number']
     if fitness_type_global == 'm':
-        x_opt = x0_global - np.dot(read_num_theory[:, 0], x0_global) / np.sum(read_num_theory[:, 0]) # normalization
+        x_opt = x0_global #- np.dot(read_num_theory[:, 0], x0_global) / np.sum(read_num_theory[:, 0]) # normalization
     elif fitness_type_global == 'w':
         x_opt = (1 + x0_global) / (1 + np.dot(read_num_theory[:, 0], x0_global)) - 1  # normalization
 
