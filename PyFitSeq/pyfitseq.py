@@ -218,6 +218,9 @@ def main():
     
     parser = argparse.ArgumentParser(description='Estimate fitness of each genotype in a competitive pooled growth experiment', 
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+
+    parser.add_argument('-p', '--processes', type=int, default=1,
+        help='Number of processes to launch with multiprocessing')
     
     parser.add_argument('-i', '--input', type=str, required=True, 
         help='a .csv file: with each column being the read number per '
@@ -326,7 +329,7 @@ def main():
                 ):
             break
 
-        pool_obj = Pool()
+        pool_obj = Pool(args.processes)
         opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
         opt_result = np.array(opt_result)
         
