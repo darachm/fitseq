@@ -219,33 +219,56 @@ def fun_likelihood_lineage_opt(x):
     likelihood_log_seq_lineage = np.zeros(seq_num_global, dtype=float)
     
     read_threshold = 1
+    read_threshold_2 = 1
     pos1 = np.where(read_num_lineage_measure_global[:-1] >= read_threshold)[0]
-    print(pos1)
-    print(read_num_lineage_theory[pos1 + 1])
-    likelihood_log_seq_lineage[pos1 + 1] = (0.25 * np.log(read_num_lineage_theory[pos1 + 1])
-                                            - 0.5 * np.log(4 * np.pi * kappa_global)
-                                            - 0.75 * np.log(read_num_lineage_measure_global[pos1 + 1])
-                                            - (np.sqrt(read_num_lineage_measure_global[pos1 + 1])
-                                               - np.sqrt(read_num_lineage_theory[pos1 + 1])) ** 2 / kappa_global)
+    likelihood_log_seq_lineage[pos1 + 1] = (
+            0.25 * np.log(read_num_lineage_theory[pos1 + 1])
+                - 0.5 * np.log(4 * np.pi * kappa_global)
+                - 0.75 * np.log(read_num_lineage_measure_global[pos1 + 1])
+                - ( np.sqrt(read_num_lineage_measure_global[pos1 + 1]) - 
+                        np.sqrt(read_num_lineage_theory[pos1 + 1])
+                    ) ** 2 / kappa_global
+            )
 
     pos = np.where(read_num_lineage_measure_global[:-1] < read_threshold)[0]
-    pos_p1 = np.where(read_num_lineage_measure_global[pos + 1] >= 10)[0]
-    pos_p2 = np.where(read_num_lineage_measure_global[pos + 1] < 10)[0]
+
+    pos_p1 = np.where(
+            read_num_lineage_measure_global[pos + 1] >= read_threshold_2
+            )[0]
+    pos_p2 = np.where(
+            read_num_lineage_measure_global[pos + 1] < read_threshold_2
+            )[0]
     pos2 = pos[pos_p1]
     pos3 = pos[pos_p2]
-    likelihood_log_seq_lineage[pos2 + 1] = (np.multiply(read_num_lineage_measure_global[pos2 + 1],
-                                                        np.log(read_num_lineage_theory[pos2 + 1]))
-                                            - read_num_lineage_theory[pos2 + 1]
-                                            - np.multiply(read_num_lineage_measure_global[pos2 + 1],
-                                                          np.log(read_num_lineage_measure_global[pos2 + 1]))
-                                            + read_num_lineage_measure_global[pos2 + 1]
-                                            - 0.5 * np.log(2 * np.pi * read_num_lineage_measure_global[pos2 + 1]))
+
+    likelihood_log_seq_lineage[pos2 + 1] = (
+            np.multiply(
+                read_num_lineage_measure_global[pos2 + 1],
+                np.log(read_num_lineage_theory[pos2 + 1])
+                ) - 
+                read_num_lineage_theory[pos2 + 1] - 
+                np.multiply(
+                    read_num_lineage_measure_global[pos2 + 1], 
+                    np.log(read_num_lineage_measure_global[pos2 + 1])
+                    ) + 
+                read_num_lineage_measure_global[pos2 + 1] - 
+                0.5 * np.log(2 * np.pi * 
+                read_num_lineage_measure_global[pos2 + 1])
+            )
     
-    factorial_tempt = [float(math.factorial(i)) for i in read_num_lineage_measure_global[pos3 + 1].astype(int)]
-    likelihood_log_seq_lineage[pos3 + 1] = (np.multiply(read_num_lineage_measure_global[pos3 + 1],
-                                                        np.log(read_num_lineage_theory[pos3 + 1]))
-                                            - read_num_lineage_theory[pos3 + 1]
-                                            - np.log(factorial_tempt))
+    factorial_tempt = [
+            float(math.factorial(i)) for i in 
+                read_num_lineage_measure_global[pos3 + 1].astype(int)
+            ]
+
+    likelihood_log_seq_lineage[pos3 + 1] = (
+            np.multiply(
+                read_num_lineage_measure_global[pos3 + 1],
+                np.log(read_num_lineage_theory[pos3 + 1])
+                ) - 
+                read_num_lineage_theory[pos3 + 1] - 
+                np.log(factorial_tempt)
+            )
 
     likelihood_log_lineage = np.sum(likelihood_log_seq_lineage)
     
@@ -370,10 +393,6 @@ def main():
         else:
             x0_tempt = [regression_output.slope for i in range(lineages_num) for regression_output in
                         [linregress(t_seq[0:regression_num], np.log(read_freq_seq[i, 0:regression_num]))]]
-        print(x0_tempt)
-        print(np.mean(x0_tempt))
-        print(np.median(x0_tempt))
-        print(np.dot(read_freq_seq[:, 0], x0_tempt))
         x0 = x0_tempt #- np.dot(read_freq_seq[:, 0], x0_tempt)  # normalization
 
     elif fitness_type_global == 'w':
@@ -419,9 +438,6 @@ def main():
             opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
             opt_result = np.array(opt_result)
 
-        print(opt_result)
-        
-        
     ################################################## estimation error
     second_derivative = np.zeros(lineages_num, dtype=float)
     for i in range(lineages_num):
