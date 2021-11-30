@@ -37,7 +37,7 @@ def estimate_parameters(x):
     NUMBER PER GENOTYPE PER SEQUENCING TIME-POINT, AND THE ESTIMATED MEAN 
     FITNESS PER SEQUENCING TIME-POINT
     
-    INPUTS 
+    INPUTS ( NOT ANY more apparently....)
         * x: fitness of each genotype, [x1, x2, ...] 
         * read_num_seq: read number per genotype at each sequencing time-point 
         * t_seq: sequenced time-points in number of generations, 
@@ -69,7 +69,7 @@ def estimate_parameters(x):
 
     read_num_theory = 1e-1*np.ones(read_num_measure_global.shape, dtype=float)
     read_num_theory[:,0] = read_num_measure_global[:,0]  
-    
+
     x_mean = np.zeros(seq_num_global, dtype=float)
     sum_term = np.zeros(seq_num_global, dtype=float)
     
@@ -314,6 +314,8 @@ def main():
 
     ##################################################
     read_num_measure_global[read_num_measure_global < 1] = 0.1
+        # This is where the minimum read is set to 0.1, so that later
+        # log values do not error out
     read_depth_seq_global = np.sum(read_num_measure_global, axis=0)
  
     read_freq_seq = read_num_measure_global / read_depth_seq_global
@@ -360,9 +362,13 @@ def main():
                 ):
             break
 
-        pool_obj = Pool(args.processes)
-        opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
-        opt_result = np.array(opt_result)
+        if args.processes > 1:
+            pool_obj = Pool(args.processes)
+            opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
+            opt_result = np.array(opt_result)
+        else:
+            opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
+            opt_result = np.array(opt_result)
         
         
     ################################################## estimation error
