@@ -379,7 +379,10 @@ def main():
     estimation_error = 1/np.sqrt(second_derivative)
 
     read_num_theory = parameter_output['Estimated_Read_Number']
-    x_opt = x0_global - np.dot(read_num_theory[:, 0], x0_global) / np.sum(read_num_theory[:, 0]) # normalization
+    if fitness_type_global == 'm':
+        x_opt = x0_global - np.dot(read_num_theory[:, 0], x0_global) / np.sum(read_num_theory[:, 0]) # normalization
+    elif fitness_type_global == 'w':
+        x_opt = (1 + x0_global) / (1 + np.dot(read_num_theory[:, 0], x0_global)) - 1  # normalization
 
     fitseq_output = {'Estimated_Fitness': x_opt,
                      'Estimation_Error': estimation_error,
