@@ -27,7 +27,7 @@ fitness_type_global = None
 
 
 ##################################################
-def fun_parameter(x):
+def estimate_parameters(x):
     """Estimate parameters?
     This copied over from the old old old PyFitSeq - dunno if still relevant
     but it's missing in this version !!!
@@ -346,7 +346,7 @@ def main():
         if fitness_type_global == 'w':
             x0_global[x0_global <= -1] = -1 + 1e-7
     
-        parameter_output = fun_parameter(x0_global)
+        parameter_output = estimate_parameters(x0_global)
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
         sum_term_global = parameter_output['Sum_Term']
         likelihood_log = parameter_output['Likelihood_Log']
