@@ -295,7 +295,7 @@ def fun_x_est_lineage(i):
     
     opt_output_lineage = minimize(fun_likelihood_lineage_opt, x0_global[i], method='Nelder-Mead', 
                                   options={'ftol': 1e-8, 'disp': False, 'maxiter': 500})
-    
+
     return opt_output_lineage['x'][0]
 
    
@@ -434,9 +434,15 @@ def main():
             pool_obj = Pool(args.processes)
             opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
             opt_result = np.array(opt_result)
+            print(np.subtract(x0_global,opt_result))
+            print(np.mean(np.subtract(x0_global,opt_result)))
+            print(np.median(np.subtract(x0_global,opt_result)))
         else:
             opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
             opt_result = np.array(opt_result)
+            print(np.subtract(x0_global,opt_result))
+            print(np.mean(np.subtract(x0_global,opt_result)))
+            print(np.median(np.subtract(x0_global,opt_result)))
 
     ################################################## estimation error
     second_derivative = np.zeros(lineages_num, dtype=float)
