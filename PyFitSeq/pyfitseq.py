@@ -79,8 +79,9 @@ def estimate_parameters(x):
             sum_term[k] = (t_seq_global[k]-t_seq_global[k-1]) * (x_mean[k]+x_mean[k-1])/2
             
             tempt = read_num_measure_global[:, k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*x - sum_term[k])
-            read_num_theory[:,k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
+            read_num_theory[:,k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]     
             x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
+            sum_term[k] = (t_seq_global[k]-t_seq_global[k-1]) * (x_mean[k]+x_mean[k-1])/2
             
     elif fitness_type_global == 'w':
         for k in range(1, seq_num_global):
@@ -93,8 +94,14 @@ def estimate_parameters(x):
                 
             tempt = read_num_measure_global[:,k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+x) - sum_term[k])
             read_num_theory[:,k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
-            x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
     
+            x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
+            if x_mean[k] != x_mean[k-1]:
+                sum_term[k] = ((x_mean[k]+1)*np.log(x_mean[k]+1) - (x_mean[k-1]+1)*np.log(x_mean[k-1]+1) 
+                               - (x_mean[k]-x_mean[k-1])) * (t_seq_global[k]-t_seq_global[k-1])/(x_mean[k]-x_mean[k-1])
+            else:
+                sum_term[k] = (t_seq_global[k] - t_seq_global[k-1]) * np.log(1 + x_mean[k-1])
+                
     likelihood_log_seq = np.zeros(read_num_measure_global.shape, dtype=float)
     
     pos1_r, pos1_c = np.where(read_num_measure_global[:, :-1] >= 20)
