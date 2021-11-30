@@ -75,13 +75,39 @@ def estimate_parameters(x):
     
     if fitness_type_global == 'm':  
         for k in range(1, seq_num_global):
-            x_mean[k] = np.maximum(np.dot(x, read_num_measure_global[:, k]) / read_depth_seq_global[k], 0)
-            sum_term[k] = (t_seq_global[k]-t_seq_global[k-1]) * (x_mean[k]+x_mean[k-1])/2
+
+            x_mean[k] = np.maximum(
+                    np.dot(x, read_num_measure_global[:, k]) / 
+                        read_depth_seq_global[k], 
+                    0)
+
+            sum_term[k] = (
+                    (t_seq_global[k]-t_seq_global[k-1]) * 
+                        (x_mean[k]+x_mean[k-1])/2
+                    )
             
-            tempt = read_num_measure_global[:, k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*x - sum_term[k])
-            read_num_theory[:,k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]     
-            x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
-            sum_term[k] = (t_seq_global[k]-t_seq_global[k-1]) * (x_mean[k]+x_mean[k-1])/2
+            tempt = (
+                    read_num_measure_global[:, k-1] * 
+                        np.exp(
+                            (t_seq_global[k]-t_seq_global[k-1])*x - 
+                                sum_term[k]
+                            )
+                    )
+
+            read_num_theory[:,k] = (
+                    tempt / read_depth_seq_global[k-1] * 
+                        read_depth_seq_global[k]     
+                    )
+
+            x_mean[k] = np.maximum(
+                    np.dot(x, read_num_theory[:, k]) / 
+                        np.sum(read_num_theory[:, k]),
+                    0)
+
+            sum_term[k] = (
+                    (t_seq_global[k]-t_seq_global[k-1]) * 
+                        (x_mean[k]+x_mean[k-1]) / 2
+                    )
             
     elif fitness_type_global == 'w':
         for k in range(1, seq_num_global):
@@ -101,6 +127,8 @@ def estimate_parameters(x):
                                - (x_mean[k]-x_mean[k-1])) * (t_seq_global[k]-t_seq_global[k-1])/(x_mean[k]-x_mean[k-1])
             else:
                 sum_term[k] = (t_seq_global[k] - t_seq_global[k-1]) * np.log(1 + x_mean[k-1])
+
+    print(x_mean)
                 
     likelihood_log_seq = np.zeros(read_num_measure_global.shape, dtype=float)
     
