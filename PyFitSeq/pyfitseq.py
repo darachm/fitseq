@@ -28,6 +28,37 @@ fitness_type_global = None
 
 ##################################################
 def fun_parameter(x):
+    """Estimate parameters?
+    This copied over from the old old old PyFitSeq - dunno if still relevant
+    but it's missing in this version !!!
+    
+    A SUB-FUNCTION CALLED BY MAIN FUNCTION main() TO CALCULATE THE LOG
+    LIKELIHOOD VALUE OF EACH GENOTYPE GIVEN ITS FITNESS, THE ESTIMATED READ 
+    NUMBER PER GENOTYPE PER SEQUENCING TIME-POINT, AND THE ESTIMATED MEAN 
+    FITNESS PER SEQUENCING TIME-POINT
+    
+    INPUTS 
+        * x: fitness of each genotype, [x1, x2, ...] 
+        * read_num_seq: read number per genotype at each sequencing time-point 
+        * t_seq: sequenced time-points in number of generations, 
+            [0, t1, t2, ...] 
+        * kappa: a noise parameter that characterizes the total noise introduced
+            by growth, cell transfer, DNA extraction, PCR, and sequencing 
+            (To measure kappa empirically, see the reference: 
+                [S. F. Levy, et al. Quantitative Evolutionary Dynamics Using 
+                High-resolution Lineage Tracking. Nature, 519: 181â186 (2015)].
+            ) .  (default: 2.5) 
+        * fitness_type: type of fitness: Wrightian fitness (w), or 
+            Malthusian fitness (m)' (default: m)
+    
+    OUTPUTS
+        * estimate_parameters_output: log likelihood value of each genotype, 
+            estimated reads number per genotype per sequencing time-point,
+            estimated mean fitness per sequencing time-point, 
+            [x_mean(t0),x_mean(t1),...]
+    """
+
+
     global read_num_measure_global
     global read_depth_seq_global
     global t_seq_global
