@@ -323,50 +323,38 @@ def fun_likelihood_lineage_opt(x):
     
     return -likelihood_log_lineage
 
-##################################################
-def calculate_likelihood_of_fitness_vector(fitness,observations):
-    """given a fitness value, calculate the likelihood of that"""
-    global kappa_global
-    #global read_num_lineage_measure_global
-    global read_depth_seq_global
-    global t_seq_global
-    global seq_num_global
-    global sum_term_global
-    global fitness_type_global
-    
+
+def calculate_likelihood_of_fitness_vector(fitness,observations,kappa):
+    """given a fitness value, calculate the likelihood of that
+
+    Arguments:
+    fitness -- fitness to calc likelihood for
+    observations -- the counts to calc likelihood for
+    kappa -- that kappa parameter for noise
+    """
+
     # generate expected counts
-    read_num_lineage_theory = predict_counts(fitness,observations)
+    expected_counts = predict_counts(fitness,observations)
 
-    likelihood_log_seq = np.zeros(read_num_measure_global.shape, dtype=float)
-    likelihood_log_seq_lineage = np.zeros(seq_num_global, dtype=float)
-    #print(likelihood_log_seq_lineage)
+    number_of_timepoints = len(observations)
+
+    likelihood_log_seq_lineage = np.zeros(number_of_timepoints, dtype=float)
     
-    read_threshold = 1
-    read_threshold_2 = 1
+    read_threshold = 20
+    read_threshold_2 = 10
 
-    pos1 = np.where(observations[:-1] >= read_threshold)[0]
-    pos1_r, pos1_c = np.where(read_num_measure_global[:, :-1] >= 20)
+    positions_to_consider = np.where(observations[:-1] >= read_threshold)[0]
 
-    likelihood_log_seq_lineage[pos1 + 1] = (
-            0.25 * np.log(read_num_lineage_theory[pos1 + 1])
-                - 0.5 * np.log(4 * np.pi * kappa_global)
-                - 0.75 * np.log(observations[pos1 + 1])
-                - ( np.sqrt(observations[pos1 + 1]) - 
-                        np.sqrt(read_num_lineage_theory[pos1 + 1])
-                    ) ** 2 / kappa_global
+    likelihood_log_seq_lineage[positions_to_consider + 1] = (
+            0.25 * np.log(expected_counts[positions_to_consider + 1])
+                - 0.5 * np.log(4 * np.pi * kappa)
+                - 0.75 * np.log(observations[positions_to_consider + 1])
+                - ( np.sqrt(observations[positions_to_consider + 1]) - 
+                        np.sqrt(expected_counts[positions_to_consider + 1])
+                    ) ** 2 / kappa
             )
 
-#    likelihood_log_seq[pos1_r, pos1_c + 1] = (0.25 * np.log(read_num_theory[pos1_r, pos1_c + 1])
-#                                              - 0.5 * np.log(4 * np.pi * kappa_global)
-#                                              - 0.75 * np.log(read_num_measure_global[pos1_r, pos1_c + 1])
-#                                              - (np.sqrt(read_num_measure_global[pos1_r, pos1_c + 1])
-#                                                 - np.sqrt(read_num_theory[pos1_r, pos1_c + 1])) ** 2 / kappa_global)
-
     pos = np.where(observations[:-1] < read_threshold)[0]
-
-
-
-
 
     pos_p1 = np.where(
             observations[pos + 1] >= read_threshold_2
@@ -377,24 +365,12 @@ def calculate_likelihood_of_fitness_vector(fitness,observations):
     pos2 = pos[pos_p1]
     pos3 = pos[pos_p2]
 
-
-#    pos_r, pos_c = np.where(read_num_measure_global[:, :-1] < 20)
-#    pos_p1 = np.where(read_num_measure_global[pos_r, pos_c + 1] >= 10)[0]
-#    pos_p2 = np.where(read_num_measure_global[pos_r, pos_c + 1] < 10)[0]
-#    pos2_r = pos_r[pos_p1]
-#    pos2_c = pos_c[pos_p1]
-#    pos3_r = pos_r[pos_p2]
-#    pos3_c = pos_c[pos_p2]
-#
-
-
-
     likelihood_log_seq_lineage[pos2 + 1] = (
             np.multiply(
                 observations[pos2 + 1],
-                np.log(read_num_lineage_theory[pos2 + 1])
+                np.log(expected_counts[pos2 + 1])
                 ) - 
-                read_num_lineage_theory[pos2 + 1] - 
+                expected_counts[pos2 + 1] - 
                 np.multiply(
                     observations[pos2 + 1], 
                     np.log(observations[pos2 + 1])
@@ -404,51 +380,23 @@ def calculate_likelihood_of_fitness_vector(fitness,observations):
                 observations[pos2 + 1])
             )
 
-
-#    likelihood_log_seq[pos2_r, pos2_c + 1] = (np.multiply(read_num_measure_global[pos2_r, pos2_c + 1],
-#                                                          np.log(read_num_theory[pos2_r, pos2_c + 1]))
-#                                              - read_num_theory[pos2_r, pos2_c + 1]
-#                                              - np.multiply(read_num_measure_global[pos2_r, pos2_c + 1],
-#                                                            np.log(read_num_measure_global[pos2_r, pos2_c + 1]))
-#                                              + read_num_measure_global[pos2_r, pos2_c + 1]
-#                                              - 0.5 * np.log(2 * np.pi * read_num_measure_global[pos2_r, pos2_c + 1]))
-#
-
-
-
-    
     factorial_tempt = [
             float(math.factorial(i)) for i in 
                 observations[pos3 + 1].astype(int)
             ]
 
-
-#    factorial_tempt = [float(math.factorial(i)) for i in read_num_measure_global[pos3_r, pos3_c + 1].astype(int)]
-
-
     likelihood_log_seq_lineage[pos3 + 1] = (
             np.multiply(
                 observations[pos3 + 1],
-                np.log(read_num_lineage_theory[pos3 + 1])
+                np.log(expected_counts[pos3 + 1])
                 ) - 
-                read_num_lineage_theory[pos3 + 1] - 
+                expected_counts[pos3 + 1] - 
                 np.log(factorial_tempt)
             )
 
-#    likelihood_log_seq[pos3_r, pos3_c + 1] = (np.multiply(read_num_measure_global[pos3_r, pos3_c + 1],
-#                                                          np.log(read_num_theory[pos3_r, pos3_c + 1]))
-#                                              - read_num_theory[pos3_r, pos3_c + 1] - np.log(factorial_tempt))
-#
-
     likelihood_log_lineage = np.sum(likelihood_log_seq_lineage)
 
-#    likelihood_log = np.sum(likelihood_log_seq, axis=1)
-    
     return -likelihood_log_lineage
-
-
-
-
 
 
 ##################################################
@@ -464,20 +412,19 @@ def fun_x_est_lineage(i):
     global fitness_type_global
     
     
-    # this is critical, this is setting this lineages read numbers to a global
-    #   value so you can get it inside the function
-    #read_num_lineage_measure_global = read_num_measure_global[i,:]
     # x0_global is the currently worked on fitnesses
-    opt_output_lineage = minimize(
+    optimization_result = minimize(
             fun=calculate_likelihood_of_fitness_vector, 
             x0=x0_global[i],
-            args=(read_num_measure_global[i,:]),
+            args=(
+                read_num_measure_global[i,:] ,
+                kappa_global
+                ),
             method='Nelder-Mead',
             options={'ftol': 1e-8, 'disp': False, 'maxiter': 500}
             )
 
-
-    return opt_output_lineage['x'][0]
+    return optimization_result['x'][0]
 
    
     
@@ -615,15 +562,9 @@ def main():
             pool_obj = Pool(args.processes)
             opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
             opt_result = np.array(opt_result)
-            print(np.subtract(x0_global,opt_result))
-            print(np.mean(np.subtract(x0_global,opt_result)))
-            print(np.median(np.subtract(x0_global,opt_result)))
         else:
             opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
             opt_result = np.array(opt_result)
-            print(np.subtract(x0_global,opt_result))
-            print(np.mean(np.subtract(x0_global,opt_result)))
-            print(np.median(np.subtract(x0_global,opt_result)))
 
     ################################################## estimation error
     second_derivative = np.zeros(lineages_num, dtype=float)
