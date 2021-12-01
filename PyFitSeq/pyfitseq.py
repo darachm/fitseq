@@ -174,6 +174,8 @@ def estimate_parameters(x):
 
 ##################################################        
 def fun_read_num_lineage_theory(x):
+    """predict expected counts?
+    """
     global read_num_lineage_measure_global
     global read_depth_seq_global
     global t_seq_global
@@ -201,6 +203,53 @@ def fun_read_num_lineage_theory(x):
             read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
     
     return read_num_lineage_theory
+
+
+
+
+##################################################        
+def predict_counts(fitness,observations):
+    """predict expected counts?
+    """
+    #global read_num_lineage_measure_global
+    global read_depth_seq_global
+    global t_seq_global
+    global seq_num_global
+    global sum_term_global #seq_num_global, sum_term_global[0]=0
+    global fitness_type_global
+
+    number_of_timepoints = len(observations)   
+
+    read_num_lineage_theory = 1e-1 * np.ones(number_of_timepoints, dtype=float)
+    read_num_lineage_theory[0] = observations[0]
+        
+    if fitness_type_global == 'm':
+        for k in range(1, number_of_timepoints):
+            tempt = (
+                    observations[k-1] * 
+                        np.exp(
+                            (t_seq_global[k]-t_seq_global[k-1]) * 
+                            fitness - sum_term_global[k]
+                            )
+                    )
+# wait a sec, so this is predicting from the observed previous timepoint at every step????? that seems odd,maybe wrong
+            read_num_lineage_theory[k] = (
+                    tempt / read_depth_seq_global[k-1] * 
+                        read_depth_seq_global[k]
+                    )
+    
+    elif fitness_type_global == 'w':
+        for k in range(1, number_of_timepoints):  
+            tempt = observations[k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+fitness) 
+                                                                  - sum_term_global[k])
+            read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
+    
+    return read_num_lineage_theory
+
+
+
+
+
 
 
 
@@ -274,6 +323,132 @@ def fun_likelihood_lineage_opt(x):
     
     return -likelihood_log_lineage
 
+##################################################
+def calculate_likelihood_of_fitness_vector(fitness,observations):
+    """given a fitness value, calculate the likelihood of that"""
+    global kappa_global
+    #global read_num_lineage_measure_global
+    global read_depth_seq_global
+    global t_seq_global
+    global seq_num_global
+    global sum_term_global
+    global fitness_type_global
+    
+    # generate expected counts
+    read_num_lineage_theory = predict_counts(fitness,observations)
+
+    likelihood_log_seq = np.zeros(read_num_measure_global.shape, dtype=float)
+    likelihood_log_seq_lineage = np.zeros(seq_num_global, dtype=float)
+    #print(likelihood_log_seq_lineage)
+    
+    read_threshold = 1
+    read_threshold_2 = 1
+
+    pos1 = np.where(observations[:-1] >= read_threshold)[0]
+    pos1_r, pos1_c = np.where(read_num_measure_global[:, :-1] >= 20)
+
+    likelihood_log_seq_lineage[pos1 + 1] = (
+            0.25 * np.log(read_num_lineage_theory[pos1 + 1])
+                - 0.5 * np.log(4 * np.pi * kappa_global)
+                - 0.75 * np.log(observations[pos1 + 1])
+                - ( np.sqrt(observations[pos1 + 1]) - 
+                        np.sqrt(read_num_lineage_theory[pos1 + 1])
+                    ) ** 2 / kappa_global
+            )
+
+#    likelihood_log_seq[pos1_r, pos1_c + 1] = (0.25 * np.log(read_num_theory[pos1_r, pos1_c + 1])
+#                                              - 0.5 * np.log(4 * np.pi * kappa_global)
+#                                              - 0.75 * np.log(read_num_measure_global[pos1_r, pos1_c + 1])
+#                                              - (np.sqrt(read_num_measure_global[pos1_r, pos1_c + 1])
+#                                                 - np.sqrt(read_num_theory[pos1_r, pos1_c + 1])) ** 2 / kappa_global)
+
+    pos = np.where(observations[:-1] < read_threshold)[0]
+
+
+
+
+
+    pos_p1 = np.where(
+            observations[pos + 1] >= read_threshold_2
+            )[0]
+    pos_p2 = np.where(
+            observations[pos + 1] < read_threshold_2
+            )[0]
+    pos2 = pos[pos_p1]
+    pos3 = pos[pos_p2]
+
+
+#    pos_r, pos_c = np.where(read_num_measure_global[:, :-1] < 20)
+#    pos_p1 = np.where(read_num_measure_global[pos_r, pos_c + 1] >= 10)[0]
+#    pos_p2 = np.where(read_num_measure_global[pos_r, pos_c + 1] < 10)[0]
+#    pos2_r = pos_r[pos_p1]
+#    pos2_c = pos_c[pos_p1]
+#    pos3_r = pos_r[pos_p2]
+#    pos3_c = pos_c[pos_p2]
+#
+
+
+
+    likelihood_log_seq_lineage[pos2 + 1] = (
+            np.multiply(
+                observations[pos2 + 1],
+                np.log(read_num_lineage_theory[pos2 + 1])
+                ) - 
+                read_num_lineage_theory[pos2 + 1] - 
+                np.multiply(
+                    observations[pos2 + 1], 
+                    np.log(observations[pos2 + 1])
+                    ) + 
+                observations[pos2 + 1] - 
+                0.5 * np.log(2 * np.pi * 
+                observations[pos2 + 1])
+            )
+
+
+#    likelihood_log_seq[pos2_r, pos2_c + 1] = (np.multiply(read_num_measure_global[pos2_r, pos2_c + 1],
+#                                                          np.log(read_num_theory[pos2_r, pos2_c + 1]))
+#                                              - read_num_theory[pos2_r, pos2_c + 1]
+#                                              - np.multiply(read_num_measure_global[pos2_r, pos2_c + 1],
+#                                                            np.log(read_num_measure_global[pos2_r, pos2_c + 1]))
+#                                              + read_num_measure_global[pos2_r, pos2_c + 1]
+#                                              - 0.5 * np.log(2 * np.pi * read_num_measure_global[pos2_r, pos2_c + 1]))
+#
+
+
+
+    
+    factorial_tempt = [
+            float(math.factorial(i)) for i in 
+                observations[pos3 + 1].astype(int)
+            ]
+
+
+#    factorial_tempt = [float(math.factorial(i)) for i in read_num_measure_global[pos3_r, pos3_c + 1].astype(int)]
+
+
+    likelihood_log_seq_lineage[pos3 + 1] = (
+            np.multiply(
+                observations[pos3 + 1],
+                np.log(read_num_lineage_theory[pos3 + 1])
+                ) - 
+                read_num_lineage_theory[pos3 + 1] - 
+                np.log(factorial_tempt)
+            )
+
+#    likelihood_log_seq[pos3_r, pos3_c + 1] = (np.multiply(read_num_measure_global[pos3_r, pos3_c + 1],
+#                                                          np.log(read_num_theory[pos3_r, pos3_c + 1]))
+#                                              - read_num_theory[pos3_r, pos3_c + 1] - np.log(factorial_tempt))
+#
+
+    likelihood_log_lineage = np.sum(likelihood_log_seq_lineage)
+
+#    likelihood_log = np.sum(likelihood_log_seq, axis=1)
+    
+    return -likelihood_log_lineage
+
+
+
+
 
 
 ##################################################
@@ -288,13 +463,19 @@ def fun_x_est_lineage(i):
     global sum_term_global
     global fitness_type_global
     
-    read_num_lineage_measure_global = read_num_measure_global[i,:]
     
-    #opt_output_lineage = minimize(fun_likelihood_lineage_opt, x0_global[i], method='BFGS',
-    #                              options={'disp': False, 'maxiter': 500})  # how to add boundry
-    
-    opt_output_lineage = minimize(fun_likelihood_lineage_opt, x0_global[i], method='Nelder-Mead', 
-                                  options={'ftol': 1e-8, 'disp': False, 'maxiter': 500})
+    # this is critical, this is setting this lineages read numbers to a global
+    #   value so you can get it inside the function
+    #read_num_lineage_measure_global = read_num_measure_global[i,:]
+    # x0_global is the currently worked on fitnesses
+    opt_output_lineage = minimize(
+            fun=calculate_likelihood_of_fitness_vector, 
+            x0=x0_global[i],
+            args=(read_num_measure_global[i,:]),
+            method='Nelder-Mead',
+            options={'ftol': 1e-8, 'disp': False, 'maxiter': 500}
+            )
+
 
     return opt_output_lineage['x'][0]
 
