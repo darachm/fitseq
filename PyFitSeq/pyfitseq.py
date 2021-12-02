@@ -26,7 +26,6 @@ fitness_type_global = None
 
 
 
-##################################################
 def estimate_parameters(x,processes,total_reads):
     """Estimate parameters?
     This copied over from the old old old PyFitSeq - dunno if still relevant
@@ -60,6 +59,7 @@ def estimate_parameters(x,processes,total_reads):
 
 
     global read_num_measure_global
+    global read_num_measure_original
     global read_depth_seq_global
     global t_seq_global
     global kappa_global
@@ -77,8 +77,8 @@ def estimate_parameters(x,processes,total_reads):
         for k in range(1, seq_num_global):
 
             freq_of_lineage = (
-                    read_num_measure_global[:, k] / 
-                        np.sum(read_num_measure_global[:, k])
+                    read_num_measure_original[:, k] / 
+                        np.sum(read_num_measure_original[:, k])
                     )
             x_mean[k] = np.average(x, weights=freq_of_lineage)
 
@@ -88,7 +88,7 @@ def estimate_parameters(x,processes,total_reads):
                     )
 
             tempt = (
-                    read_num_measure_global[:, k-1] * 
+                    read_num_measure_original[:, k-1] * 
                         np.exp(
                             (t_seq_global[k]-t_seq_global[k-1]) * 
                                 x - sum_term[k]
@@ -155,41 +155,6 @@ def estimate_parameters(x,processes,total_reads):
     
 
 ##################################################        
-def fun_read_num_lineage_theory(x):
-    """predict expected counts?
-    """
-    global read_num_lineage_measure_global
-    global read_depth_seq_global
-    global t_seq_global
-    global seq_num_global
-    global sum_term_global #seq_num_global, sum_term_global[0]=0
-    global fitness_type_global
-    
-    read_num_lineage_theory = 1e-1*np.ones(seq_num_global, dtype=float)
-    read_num_lineage_theory[0] = read_num_lineage_measure_global[0]
-        
-    if fitness_type_global == 'm':
-        for k in range(1, seq_num_global):
-            tempt = read_num_lineage_measure_global[k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*x - sum_term_global[k])
-            read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
-    
-    elif fitness_type_global == 'w':
-        for k in range(1, seq_num_global):  
-            tempt = (
-                    read_num_lineage_measure_global[k-1] *
-                        np.exp(
-                            (t_seq_global[k]-t_seq_global[k-1]) *
-                                np.log(np.maximum(1+x,1)) - sum_term_global[k]
-                            )
-                    )
-            read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
-    
-    return read_num_lineage_theory
-
-
-
-
-##################################################        
 def predict_counts(fitness,observations,total_reads,sum_term):
     """predict expected counts?
     """
@@ -225,78 +190,6 @@ def predict_counts(fitness,observations,total_reads,sum_term):
     
     return read_num_lineage_theory
 
-
-
-
-##################################################
-def fun_likelihood_lineage_opt(x):
-    global kappa_global
-    global read_num_lineage_measure_global
-    global read_depth_seq_global
-    global t_seq_global
-    global seq_num_global
-    global sum_term_global
-    global fitness_type_global
-    
-    read_num_lineage_theory = fun_read_num_lineage_theory(x)
-    
-    likelihood_log_seq_lineage = np.zeros(seq_num_global, dtype=float)
-    
-    read_threshold = 1
-    read_threshold_2 = 1
-    pos1 = np.where(read_num_lineage_measure_global[:-1] >= read_threshold)[0]
-    likelihood_log_seq_lineage[pos1 + 1] = (
-            0.25 * np.log(read_num_lineage_theory[pos1 + 1])
-                - 0.5 * np.log(4 * np.pi * kappa_global)
-                - 0.75 * np.log(read_num_lineage_measure_global[pos1 + 1])
-                - ( np.sqrt(read_num_lineage_measure_global[pos1 + 1]) - 
-                        np.sqrt(read_num_lineage_theory[pos1 + 1])
-                    ) ** 2 / kappa_global
-            )
-
-    pos = np.where(read_num_lineage_measure_global[:-1] < read_threshold)[0]
-
-    pos_p1 = np.where(
-            read_num_lineage_measure_global[pos + 1] >= read_threshold_2
-            )[0]
-    pos_p2 = np.where(
-            read_num_lineage_measure_global[pos + 1] < read_threshold_2
-            )[0]
-    pos2 = pos[pos_p1]
-    pos3 = pos[pos_p2]
-
-    likelihood_log_seq_lineage[pos2 + 1] = (
-            np.multiply(
-                read_num_lineage_measure_global[pos2 + 1],
-                np.log(read_num_lineage_theory[pos2 + 1])
-                ) - 
-                read_num_lineage_theory[pos2 + 1] - 
-                np.multiply(
-                    read_num_lineage_measure_global[pos2 + 1], 
-                    np.log(read_num_lineage_measure_global[pos2 + 1])
-                    ) + 
-                read_num_lineage_measure_global[pos2 + 1] - 
-                0.5 * np.log(2 * np.pi * 
-                read_num_lineage_measure_global[pos2 + 1])
-            )
-    
-    factorial_tempt = [
-            float(math.factorial(i)) for i in 
-                read_num_lineage_measure_global[pos3 + 1].astype(int)
-            ]
-
-    likelihood_log_seq_lineage[pos3 + 1] = (
-            np.multiply(
-                read_num_lineage_measure_global[pos3 + 1],
-                np.log(read_num_lineage_theory[pos3 + 1])
-                ) - 
-                read_num_lineage_theory[pos3 + 1] - 
-                np.log(factorial_tempt)
-            )
-
-    likelihood_log_lineage = np.sum(likelihood_log_seq_lineage)
-    
-    return -likelihood_log_lineage
 
 
 def calculate_likelihood_of_fitness_vector(fitness,observations,kappa,
@@ -390,7 +283,6 @@ def fun_x_est_lineage(i):
     global sum_term_global
     global fitness_type_global
     
-    
     # x0_global is the currently worked on fitnesses
     optimization_result = minimize(
             fun=calculate_likelihood_of_fitness_vector, 
@@ -415,6 +307,7 @@ def main():
     """
     global x0_global
     global read_num_measure_global
+    global read_num_measure_original
     global kappa_global
     global read_num_lineage_measure_global
     global read_depth_seq_global
@@ -492,11 +385,11 @@ def main():
     elif fitness_type_global == 'm':
         print('Estimating Malthusian fitness for %d lineages...' %lineages_num,file=sys.stderr)  
 
-    ##################################################
+    read_num_measure_original = read_num_measure_global
     read_num_measure_global[read_num_measure_global < 1] = 0.1
         # This is where the minimum read is set to 0.1, so that later
         # log values do not error out
-    read_depth_seq_global = np.sum(read_num_measure_global, axis=0)
+    read_depth_seq_global = np.sum(read_num_measure_original, axis=0)
  
     read_freq_seq = read_num_measure_global / read_depth_seq_global
     if fitness_type_global == 'm':
@@ -516,41 +409,32 @@ def main():
                                [linregress(t_seq_global[0:regression_num], np.log(read_freq_seq[i, 0:regression_num]))]]) - 1
         x0 = (1 + x0_tempt) / (1 + np.dot(read_freq_seq[:, 0], x0_tempt)) - 1  # normalization
 
-    ##################################################
+    x0_global = x0
+
+    print(r'-- Estimating initial guesses of global parameters ',file=sys.stderr)
+    parameter_output = estimate_parameters(x0_global,args.processes,
+            np.sum(read_num_measure_global, axis=0)
+            )
+    x_mean_global = parameter_output['Estimated_Mean_Fitness']
+    sum_term_global = parameter_output['Sum_Term']
+    likelihood_log = parameter_output['Likelihood_Log']
+
     likelihood_log_sum_iter = []
     for k_iter in range(max_iter_num):   
-        if k_iter == 0:
-
-            x0_global = x0
-
-            print(r'-- Estimating initial guesses of global parameters ',file=sys.stderr)
-            parameter_output = estimate_parameters(x0_global,args.processes,
-                    np.sum(read_num_measure_global, axis=0)
-                    )
-            x_mean_global = parameter_output['Estimated_Mean_Fitness']
-            sum_term_global = parameter_output['Sum_Term']
-            likelihood_log = parameter_output['Likelihood_Log']
-
-        else:
-            x0_global = opt_result
 
         if fitness_type_global == 'w':
             x0_global[x0_global <= -1] = -1 + 1e-7
          
-        if (    k_iter>=1 and 
-                k_iter >= min_iter and 
-                (likelihood_log_sum_iter[-2] / likelihood_log_sum_iter[-1]) - 1 <= minimum_step_size
-                ):
-            break
-
         print(r'-- Optimizing fitness for every lineage with global parms',file=sys.stderr)
         if args.processes > 1:
-            pool_obj = Pool(args.processes)
-            opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
-            opt_result = np.array(opt_result)
+            with Pool(args.processes) as pool_obj:
+                x0_global = np.array(
+                        pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
+                        )
         else:
-            opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
-            opt_result = np.array(opt_result)
+            x0_global = np.array(
+                    list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
+                    )
 
         print(r'-- Re-estimating global parms',file=sys.stderr)
         parameter_output = estimate_parameters(x0_global,args.processes,
@@ -563,13 +447,20 @@ def main():
         print(r'-- Average fitnesses ', x_mean_global,file=sys.stderr)
 
         likelihood_log_sum_iter.append(np.sum(likelihood_log))
-        print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]),file=sys.stderr)
+        print(r'-- log likelihood after iteration %i: %.4f' 
+            %(k_iter+1, likelihood_log_sum_iter[-1]) ,
+            file=sys.stderr)
 
-    ################################################## estimation error
+        if (    k_iter >= min_iter and 
+                (likelihood_log_sum_iter[-2] / likelihood_log_sum_iter[-1]) - 1 <= minimum_step_size
+                ):
+            break
+
+    # estimation error
     second_derivative = np.zeros(lineages_num, dtype=float)
     for i in range(lineages_num):
         read_num_lineage_measure_global = read_num_measure_global[i,:]
-        second_derivative[i] = derivative(fun_likelihood_lineage_opt, x0_global[i], dx=1e-6, n=2)
+        second_derivative[i] = derivative(calculate_likelihood_of_fitness_vector, x0_global[i], dx=1e-6, n=2)
     estimation_error = [ 1/i for i in np.sqrt(second_derivative) if i > 0 ]
 
     read_num_theory = parameter_output['Estimated_Read_Number']
