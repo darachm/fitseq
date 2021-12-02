@@ -5,7 +5,7 @@ import pandas as pd
 import math
 import argparse
 import itertools
-import csv
+import sys
 from scipy.stats import linregress
 from scipy.optimize import minimize
 from scipy.optimize import Bounds
@@ -465,8 +465,14 @@ def main():
         help='type of fitness: Wrightian fitness (w), or '
              'Malthusian fitness (m)')
     
-    parser.add_argument('-o', '--output_filename', type=str, default='output', 
-                        help='prefix of output .csv files')
+    parser.add_argument('-o', '--output', type=str, default=sys.stdout, 
+        help='The path (default STDOUT) from which to output the fitnesses '
+            'and errors and likelihoods and estimated reads. CSV format.')
+
+    parser.add_argument('-om', '--output-mean-fitness', type=str, 
+        default=None,
+        help='The path (default None) to which to write the mean fitnesses'
+            'calculated per sample.')
 
     args = parser.parse_args()
     read_num_measure_global = np.array(pd.read_csv(args.input, header=None), dtype=float)
@@ -476,16 +482,15 @@ def main():
     kappa_global = args.kappa
     regression_num = args.regression_num
     fitness_type_global = args.fitness_type
-    output_filename = args.output_filename
     minimum_step_size = args.min_step
     
     lineages_num, seq_num_global = read_num_measure_global.shape
 
     if fitness_type_global == 'w':
         exit("Wrightian fitness does not yet work in this version")
-        print('Estimating Wrightian fitness for %d lineages...' %lineages_num)
+        print('Estimating Wrightian fitness for %d lineages...' %lineages_num,file=sys.stderr)
     elif fitness_type_global == 'm':
-        print('Estimating Malthusian fitness for %d lineages...' %lineages_num)  
+        print('Estimating Malthusian fitness for %d lineages...' %lineages_num,file=sys.stderr)  
 
     ##################################################
     read_num_measure_global[read_num_measure_global < 1] = 0.1
@@ -518,7 +523,7 @@ def main():
 
             x0_global = x0
 
-            print(r'-- Estimating initial guesses of global parameters ')
+            print(r'-- Estimating initial guesses of global parameters ',file=sys.stderr)
             parameter_output = estimate_parameters(x0_global,args.processes,
                     np.sum(read_num_measure_global, axis=0)
                     )
@@ -538,7 +543,7 @@ def main():
                 ):
             break
 
-        print(r'-- Optimizing fitness for every lineage with global parms')
+        print(r'-- Optimizing fitness for every lineage with global parms',file=sys.stderr)
         if args.processes > 1:
             pool_obj = Pool(args.processes)
             opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
@@ -547,7 +552,7 @@ def main():
             opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
             opt_result = np.array(opt_result)
 
-        print(r'-- Re-estimating global parms')
+        print(r'-- Re-estimating global parms',file=sys.stderr)
         parameter_output = estimate_parameters(x0_global,args.processes,
                 np.sum(read_num_measure_global, axis=0)
                 )
@@ -555,10 +560,10 @@ def main():
         sum_term_global = parameter_output['Sum_Term']
         likelihood_log = parameter_output['Likelihood_Log']
 
-        print(r'-- Average fitnesses ', x_mean_global)
+        print(r'-- Average fitnesses ', x_mean_global,file=sys.stderr)
 
         likelihood_log_sum_iter.append(np.sum(likelihood_log))
-        print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]))
+        print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]),file=sys.stderr)
 
     ################################################## estimation error
     second_derivative = np.zeros(lineages_num, dtype=float)
@@ -579,12 +584,14 @@ def main():
     for k in range(seq_num_global):
         fitseq_output['Estimated_Read_Number_t%d' % k] = read_num_theory[:, k].astype(float)
 
-    pd.DataFrame(fitseq_output).to_csv(output_filename+'_FitSeq.csv',index=False)
+    pd.DataFrame(fitseq_output).to_csv(args.output,index=False)
 
-    #x_mean_global
-
+    pd.DataFrame(
+        {'Samples':list(range(seq_num_global)),
+            'Estimate_Mean_Fitness':x_mean_global}
+        ).to_csv(args.output_mean_fitness,index=False)
     
-    print('Finished!')
+    print('Finished!',file=sys.stderr)
 
 if __name__ == "__main__":
     main()
