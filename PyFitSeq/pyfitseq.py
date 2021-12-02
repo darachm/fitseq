@@ -75,35 +75,64 @@ def estimate_parameters(x):
     
     if fitness_type_global == 'm':  
         for k in range(1, seq_num_global):
-            x_mean[k] = np.maximum(np.dot(x, read_num_measure_global[:, k]) / read_depth_seq_global[k], 0)
-            sum_term[k] = (t_seq_global[k]-t_seq_global[k-1]) * (x_mean[k]+x_mean[k-1])/2
-            
-            tempt = read_num_measure_global[:, k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*x - sum_term[k])
-            read_num_theory[:,k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]     
-            x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
-            sum_term[k] = (t_seq_global[k]-t_seq_global[k-1]) * (x_mean[k]+x_mean[k-1])/2
-            
+
+            freq_of_lineage = (
+                    read_num_measure_global[:, k] / 
+                        np.sum(read_num_measure_global[:, k])
+                    )
+            x_mean[k] = np.average(x, weights=freq_of_lineage)
+
+            sum_term[k] = (
+                    (t_seq_global[k]-t_seq_global[k-1]) * 
+                        (x_mean[k]+x_mean[k-1]) / 2
+                    )
+
+            tempt = (
+                    read_num_measure_global[:, k-1] * 
+                        np.exp(
+                            (t_seq_global[k]-t_seq_global[k-1]) * 
+                                x - sum_term[k]
+                            )
+                    )
+
+            read_num_theory[:,k] = ( tempt /
+                    read_depth_seq_global[k-1]*read_depth_seq_global[k]
+                    )
+
     elif fitness_type_global == 'w':
         for k in range(1, seq_num_global):
-            x_mean[k] = np.maximum(np.dot(x, read_num_measure_global[:, k]) / read_depth_seq_global[k], 0)
+
+            freq_of_lineage = (
+                    read_num_measure_global[:, k] / 
+                        np.sum(read_num_measure_global[:, k])
+                    )
+            x_mean[k] = np.maximum( np.average(x, weights=freq_of_lineage) , 0)
+
             if x_mean[k] != x_mean[k-1]:
                 sum_term[k] = ((x_mean[k]+1)*np.log(x_mean[k]+1) - (x_mean[k-1]+1)*np.log(x_mean[k-1]+1) 
                                - (x_mean[k]-x_mean[k-1])) * (t_seq_global[k]-t_seq_global[k-1])/(x_mean[k]-x_mean[k-1])
             else:
                 sum_term[k] = (t_seq_global[k] - t_seq_global[k-1]) * np.log(1 + x_mean[k-1])
                 
-            tempt = read_num_measure_global[:,k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+x) - sum_term[k])
+            tempt = (
+                read_num_measure_global[:,k-1] * 
+                    np.exp( (t_seq_global[k]-t_seq_global[k-1]) * 
+                        np.log(1+x) - sum_term[k]
+                        )
+                )
             read_num_theory[:,k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
     
-            x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
+            #x_mean[k] = np.maximum(np.dot(x, read_num_theory[:, k]) / np.sum(read_num_theory[:, k]),0)
             if x_mean[k] != x_mean[k-1]:
                 sum_term[k] = ((x_mean[k]+1)*np.log(x_mean[k]+1) - (x_mean[k-1]+1)*np.log(x_mean[k-1]+1) 
                                - (x_mean[k]-x_mean[k-1])) * (t_seq_global[k]-t_seq_global[k-1])/(x_mean[k]-x_mean[k-1])
             else:
                 sum_term[k] = (t_seq_global[k] - t_seq_global[k-1]) * np.log(1 + x_mean[k-1])
-                
+
+    print(x_mean)
+
     likelihood_log_seq = np.zeros(read_num_measure_global.shape, dtype=float)
-    
+
     pos1_r, pos1_c = np.where(read_num_measure_global[:, :-1] >= 20)
     likelihood_log_seq[pos1_r, pos1_c + 1] = (0.25 * np.log(read_num_theory[pos1_r, pos1_c + 1])
                                               - 0.5 * np.log(4 * np.pi * kappa_global)
@@ -162,8 +191,13 @@ def fun_read_num_lineage_theory(x):
     
     elif fitness_type_global == 'w':
         for k in range(1, seq_num_global):  
-            tempt = read_num_lineage_measure_global[k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+x) 
-                                                                  - sum_term_global[k])
+            tempt = (
+                    read_num_lineage_measure_global[k-1] *
+                        np.exp(
+                            (t_seq_global[k]-t_seq_global[k-1]) *
+                                np.log(np.maximum(1+x,1)) - sum_term_global[k]
+                            )
+                    )
             read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
     
     return read_num_lineage_theory
@@ -314,6 +348,7 @@ def main():
     lineages_num, seq_num_global = read_num_measure_global.shape
 
     if fitness_type_global == 'w':
+        exit("Wrightian fitness does not yet work in this version")
         print('Estimating Wrightian fitness for %d lineages...' %lineages_num)
     elif fitness_type_global == 'm':
         print('Estimating Malthusian fitness for %d lineages...' %lineages_num)  
@@ -383,7 +418,7 @@ def main():
     for i in range(lineages_num):
         read_num_lineage_measure_global = read_num_measure_global[i,:]
         second_derivative[i] = derivative(fun_likelihood_lineage_opt, x0_global[i], dx=1e-6, n=2)
-    estimation_error = 1/np.sqrt(second_derivative)
+    estimation_error = [ 1/i for i in np.sqrt(second_derivative) if i > 0 ]
 
     read_num_theory = parameter_output['Estimated_Read_Number']
     if fitness_type_global == 'm':
