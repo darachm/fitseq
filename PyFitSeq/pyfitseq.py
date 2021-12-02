@@ -478,7 +478,14 @@ def main():
     second_derivative = np.zeros(lineages_num, dtype=float)
     for i in range(lineages_num):
         read_num_lineage_measure_global = read_num_measure_global[i,:]
-        second_derivative[i] = derivative(calculate_likelihood_of_fitness_vector, x0_global[i], dx=1e-6, n=2)
+        second_derivative[i] = derivative(
+                calculate_likelihood_of_fitness_vector, 
+                    x0_global[i], dx=1e-6, n=2,
+                    args=(read_num_measure_global[i,:],kappa_global,
+                        np.sum(read_num_measure_global, axis=0) ,
+                        sum_term_global
+                        ) 
+                    )
     estimation_error = [ 1/i for i in np.sqrt(second_derivative) if i > 0 ]
 
     read_num_theory = parameter_output['Estimated_Read_Number']
