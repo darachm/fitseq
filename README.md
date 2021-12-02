@@ -1,8 +1,18 @@
 [![Python 3.7](https://img.shields.io/badge/python-3.7-green.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![Contact Info](https://img.shields.io/badge/Email-fangfeili0525@gmail.com-orange.svg)]()
+<!--[![Contact Info](https://img.shields.io/badge/Email-fangfeili0525@gmail.com-orange.svg)]()-->
 
+# fitseq
 
+This has been extensively refactored. It runs a bit differently now.
+
+- more functional-structured internals
+- longer running, apparently handles mean_fitness a bit more robustly
+- output is different - STDOUT default output STDERR for messages
+- mean fitness is output as a separate optional file
+- etc.
+
+<!--
 ## PyFitSeq
 
 ### 1. What is PyFitSeq?
@@ -105,5 +115,5 @@ python pyfitseq.py -i output_EvoSimulation_Read_Number.csv -t 0 3 6 9 12 -o outp
 python pyfitseq.py -i output_EvoSimulation_Read_Number2.csv -t 0 2 6 8 -m 12 -k 2 -g 3 -f w -o output
 ```  
 
-
+-->
 
