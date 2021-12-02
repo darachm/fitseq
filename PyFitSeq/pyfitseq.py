@@ -468,7 +468,6 @@ def main():
     parser.add_argument('-o', '--output_filename', type=str, default='output', 
                         help='prefix of output .csv files')
 
-    
     args = parser.parse_args()
     read_num_measure_global = np.array(pd.read_csv(args.input, header=None), dtype=float)
     t_seq_global = np.array(args.t_seq, dtype=float)
@@ -487,7 +486,6 @@ def main():
         print('Estimating Wrightian fitness for %d lineages...' %lineages_num)
     elif fitness_type_global == 'm':
         print('Estimating Malthusian fitness for %d lineages...' %lineages_num)  
-
 
     ##################################################
     read_num_measure_global[read_num_measure_global < 1] = 0.1
@@ -513,34 +511,34 @@ def main():
                                [linregress(t_seq_global[0:regression_num], np.log(read_freq_seq[i, 0:regression_num]))]]) - 1
         x0 = (1 + x0_tempt) / (1 + np.dot(read_freq_seq[:, 0], x0_tempt)) - 1  # normalization
 
-    
     ##################################################
     likelihood_log_sum_iter = []
     for k_iter in range(max_iter_num):   
         if k_iter == 0:
+
             x0_global = x0
+
+            print(r'-- Estimating initial guesses of global parameters ')
+            parameter_output = estimate_parameters(x0_global,args.processes,
+                    np.sum(read_num_measure_global, axis=0)
+                    )
+            x_mean_global = parameter_output['Estimated_Mean_Fitness']
+            sum_term_global = parameter_output['Sum_Term']
+            likelihood_log = parameter_output['Likelihood_Log']
+
         else:
             x0_global = opt_result
-         
+
         if fitness_type_global == 'w':
             x0_global[x0_global <= -1] = -1 + 1e-7
-    
-        parameter_output = estimate_parameters(x0_global,args.processes,
-                np.sum(read_num_measure_global, axis=0)
-                )
-        x_mean_global = parameter_output['Estimated_Mean_Fitness']
-        sum_term_global = parameter_output['Sum_Term']
-        likelihood_log = parameter_output['Likelihood_Log']
-   
-        likelihood_log_sum_iter.append(np.sum(likelihood_log))
-        print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]))
-
+         
         if (    k_iter>=1 and 
                 k_iter >= min_iter and 
                 (likelihood_log_sum_iter[-2] / likelihood_log_sum_iter[-1]) - 1 <= minimum_step_size
                 ):
             break
 
+        print(r'-- Optimizing fitness for every lineage with global parms')
         if args.processes > 1:
             pool_obj = Pool(args.processes)
             opt_result = pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
@@ -548,6 +546,19 @@ def main():
         else:
             opt_result = list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
             opt_result = np.array(opt_result)
+
+        print(r'-- Re-estimating global parms')
+        parameter_output = estimate_parameters(x0_global,args.processes,
+                np.sum(read_num_measure_global, axis=0)
+                )
+        x_mean_global = parameter_output['Estimated_Mean_Fitness']
+        sum_term_global = parameter_output['Sum_Term']
+        likelihood_log = parameter_output['Likelihood_Log']
+
+        print(r'-- Average fitnesses ', x_mean_global)
+
+        likelihood_log_sum_iter.append(np.sum(likelihood_log))
+        print(r'-- log likelihood after iteration %i: %.4f' %(k_iter+1, likelihood_log_sum_iter[-1]))
 
     ################################################## estimation error
     second_derivative = np.zeros(lineages_num, dtype=float)
@@ -570,6 +581,7 @@ def main():
     for k in range(seq_num_global):
         fitseq_output['Estimated_Read_Number_t%d' % k] = read_num_theory[:, k].astype(float)
 
+    print(fitseq_output)
     tempt = list(itertools.zip_longest(*list(fitseq_output.values())))
     with open(output_filename + '_FitSeq.csv', 'w') as f:
         w = csv.writer(f)
