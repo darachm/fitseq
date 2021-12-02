@@ -145,7 +145,7 @@ def estimate_parameters(x,processes,total_reads):
                         for i in range(read_num_measure_global.shape[0]) ]
                     ) ))
 
-    parameter_output = {'Likelihood_Log': -(np.sum(other_result)),
+    parameter_output = {'Likelihood_Log': other_result,
                         'Estimated_Read_Number': read_num_theory,
                         'Estimated_Mean_Fitness': x_mean, 
                         'Sum_Term': sum_term}
@@ -575,18 +575,14 @@ def main():
 
     fitseq_output = {'Estimated_Fitness': x_opt,
                      'Estimation_Error': estimation_error,
-                     'Likelihood_Log': likelihood_log,
-                     'Estimated_Mean_Fitness': x_mean_global}
-
+                     'Likelihood_Log': likelihood_log}
     for k in range(seq_num_global):
         fitseq_output['Estimated_Read_Number_t%d' % k] = read_num_theory[:, k].astype(float)
 
-    print(fitseq_output)
-    tempt = list(itertools.zip_longest(*list(fitseq_output.values())))
-    with open(output_filename + '_FitSeq.csv', 'w') as f:
-        w = csv.writer(f)
-        w.writerow(fitseq_output.keys())
-        w.writerows(tempt)
+    pd.DataFrame(fitseq_output).to_csv(output_filename+'_FitSeq.csv',index=False)
+
+    #x_mean_global
+
     
     print('Finished!')
 
