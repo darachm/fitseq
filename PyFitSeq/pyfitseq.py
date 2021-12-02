@@ -249,6 +249,45 @@ def predict_counts(fitness,observations):
 
 
 
+def predict_counts(fitness,observations):
+    """predict expected counts?
+    """
+    #global read_num_lineage_measure_global
+    global read_depth_seq_global
+    global t_seq_global
+    global seq_num_global
+    global sum_term_global #seq_num_global, sum_term_global[0]=0
+    global fitness_type_global
+
+    number_of_timepoints = len(observations)   
+
+    read_num_lineage_theory = 1e-1 * np.ones(number_of_timepoints, dtype=float)
+    read_num_lineage_theory[0] = observations[0]
+        
+    if fitness_type_global == 'm':
+        for k in range(1, number_of_timepoints):
+            tempt = (
+                    observations[k-1] * 
+                        np.exp(
+                            (t_seq_global[k]-t_seq_global[k-1]) * 
+                            fitness - sum_term_global[k]
+                            )
+                    )
+# wait a sec, so this is predicting from the observed previous timepoint at every step????? that seems odd,maybe wrong
+            read_num_lineage_theory[k] = (
+                    tempt / read_depth_seq_global[k-1] * 
+                        read_depth_seq_global[k]
+                    )
+    
+    elif fitness_type_global == 'w':
+        for k in range(1, number_of_timepoints):  
+            tempt = observations[k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+fitness) 
+                                                                  - sum_term_global[k])
+            read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
+    
+    return read_num_lineage_theory
+
+
 
 
 
