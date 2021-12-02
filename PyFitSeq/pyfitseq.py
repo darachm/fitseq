@@ -428,7 +428,8 @@ def main():
     sum_term_global = parameter_output['Sum_Term']
     likelihood_log = parameter_output['Likelihood_Log']
 
-    likelihood_log_sum_iter = []
+    likelihood_log_sum_iter = [np.sum(likelihood_log)]
+
     for k_iter in range(max_iter_num):   
 
         if fitness_type_global == 'w':
