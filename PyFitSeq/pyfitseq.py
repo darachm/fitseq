@@ -11,8 +11,8 @@ from scipy.optimize import minimize
 from scipy.optimize import Bounds
 from tqdm import tqdm
 from scipy.misc import derivative
-from multiprocess import Pool, Process
-
+from multiprocessing import Pool
+import itertools
 
 x0_global = None
 read_num_measure_global = None
@@ -27,7 +27,7 @@ fitness_type_global = None
 
 
 ##################################################
-def estimate_parameters(x):
+def estimate_parameters(x,processes,total_reads):
     """Estimate parameters?
     This copied over from the old old old PyFitSeq - dunno if still relevant
     but it's missing in this version !!!
@@ -129,41 +129,23 @@ def estimate_parameters(x):
             else:
                 sum_term[k] = (t_seq_global[k] - t_seq_global[k-1]) * np.log(1 + x_mean[k-1])
 
-    print(x_mean)
+    if processes > 1:
+        pool_obj = Pool(processes)
+        other_result = pool_obj.starmap(
+                calculate_likelihood_of_fitness_vector, 
+                tqdm(
+                    [ (x0_global[i],read_num_measure_global[i,:],kappa_global,total_reads,sum_term) 
+                        for i in range(read_num_measure_global.shape[0]) ]
+                    ) )
+    else:
+        other_result = list(itertools.starmap(
+                calculate_likelihood_of_fitness_vector, 
+                tqdm(
+                    [ (x0_global[i],read_num_measure_global[i,:],kappa_global,total_reads,sum_term) 
+                        for i in range(read_num_measure_global.shape[0]) ]
+                    ) ))
 
-    likelihood_log_seq = np.zeros(read_num_measure_global.shape, dtype=float)
-
-    pos1_r, pos1_c = np.where(read_num_measure_global[:, :-1] >= 20)
-    likelihood_log_seq[pos1_r, pos1_c + 1] = (0.25 * np.log(read_num_theory[pos1_r, pos1_c + 1])
-                                              - 0.5 * np.log(4 * np.pi * kappa_global)
-                                              - 0.75 * np.log(read_num_measure_global[pos1_r, pos1_c + 1])
-                                              - (np.sqrt(read_num_measure_global[pos1_r, pos1_c + 1])
-                                                 - np.sqrt(read_num_theory[pos1_r, pos1_c + 1])) ** 2 / kappa_global)
-
-    pos_r, pos_c = np.where(read_num_measure_global[:, :-1] < 20)
-    pos_p1 = np.where(read_num_measure_global[pos_r, pos_c + 1] >= 10)[0]
-    pos_p2 = np.where(read_num_measure_global[pos_r, pos_c + 1] < 10)[0]
-    pos2_r = pos_r[pos_p1]
-    pos2_c = pos_c[pos_p1]
-    pos3_r = pos_r[pos_p2]
-    pos3_c = pos_c[pos_p2]
-
-    likelihood_log_seq[pos2_r, pos2_c + 1] = (np.multiply(read_num_measure_global[pos2_r, pos2_c + 1],
-                                                          np.log(read_num_theory[pos2_r, pos2_c + 1]))
-                                              - read_num_theory[pos2_r, pos2_c + 1]
-                                              - np.multiply(read_num_measure_global[pos2_r, pos2_c + 1],
-                                                            np.log(read_num_measure_global[pos2_r, pos2_c + 1]))
-                                              + read_num_measure_global[pos2_r, pos2_c + 1]
-                                              - 0.5 * np.log(2 * np.pi * read_num_measure_global[pos2_r, pos2_c + 1]))
-
-    factorial_tempt = [float(math.factorial(i)) for i in read_num_measure_global[pos3_r, pos3_c + 1].astype(int)]
-    likelihood_log_seq[pos3_r, pos3_c + 1] = (np.multiply(read_num_measure_global[pos3_r, pos3_c + 1],
-                                                          np.log(read_num_theory[pos3_r, pos3_c + 1]))
-                                              - read_num_theory[pos3_r, pos3_c + 1] - np.log(factorial_tempt))
-
-    likelihood_log = np.sum(likelihood_log_seq, axis=1)
-    
-    parameter_output = {'Likelihood_Log': likelihood_log,
+    parameter_output = {'Likelihood_Log': -(np.sum(other_result)),
                         'Estimated_Read_Number': read_num_theory,
                         'Estimated_Mean_Fitness': x_mean, 
                         'Sum_Term': sum_term}
@@ -208,86 +190,40 @@ def fun_read_num_lineage_theory(x):
 
 
 ##################################################        
-def predict_counts(fitness,observations):
+def predict_counts(fitness,observations,total_reads,sum_term):
     """predict expected counts?
     """
-    #global read_num_lineage_measure_global
-    global read_depth_seq_global
     global t_seq_global
     global seq_num_global
-    global sum_term_global #seq_num_global, sum_term_global[0]=0
     global fitness_type_global
 
     number_of_timepoints = len(observations)   
 
     read_num_lineage_theory = 1e-1 * np.ones(number_of_timepoints, dtype=float)
     read_num_lineage_theory[0] = observations[0]
-        
+
     if fitness_type_global == 'm':
         for k in range(1, number_of_timepoints):
             tempt = (
                     observations[k-1] * 
                         np.exp(
                             (t_seq_global[k]-t_seq_global[k-1]) * 
-                            fitness - sum_term_global[k]
+                            fitness - sum_term[k]
                             )
                     )
 # wait a sec, so this is predicting from the observed previous timepoint at every step????? that seems odd,maybe wrong
             read_num_lineage_theory[k] = (
-                    tempt / read_depth_seq_global[k-1] * 
-                        read_depth_seq_global[k]
+                    tempt / total_reads[k-1] * 
+                        total_reads[k]
                     )
     
     elif fitness_type_global == 'w':
         for k in range(1, number_of_timepoints):  
             tempt = observations[k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+fitness) 
-                                                                  - sum_term_global[k])
-            read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
+                                                                  - sum_term[k])
+            read_num_lineage_theory[k] = tempt/total_reads[k-1]*total_reads[k]
     
     return read_num_lineage_theory
-
-
-
-
-def predict_counts(fitness,observations):
-    """predict expected counts?
-    """
-    #global read_num_lineage_measure_global
-    global read_depth_seq_global
-    global t_seq_global
-    global seq_num_global
-    global sum_term_global #seq_num_global, sum_term_global[0]=0
-    global fitness_type_global
-
-    number_of_timepoints = len(observations)   
-
-    read_num_lineage_theory = 1e-1 * np.ones(number_of_timepoints, dtype=float)
-    read_num_lineage_theory[0] = observations[0]
-        
-    if fitness_type_global == 'm':
-        for k in range(1, number_of_timepoints):
-            tempt = (
-                    observations[k-1] * 
-                        np.exp(
-                            (t_seq_global[k]-t_seq_global[k-1]) * 
-                            fitness - sum_term_global[k]
-                            )
-                    )
-# wait a sec, so this is predicting from the observed previous timepoint at every step????? that seems odd,maybe wrong
-            read_num_lineage_theory[k] = (
-                    tempt / read_depth_seq_global[k-1] * 
-                        read_depth_seq_global[k]
-                    )
-    
-    elif fitness_type_global == 'w':
-        for k in range(1, number_of_timepoints):  
-            tempt = observations[k-1] * np.exp((t_seq_global[k]-t_seq_global[k-1])*np.log(1+fitness) 
-                                                                  - sum_term_global[k])
-            read_num_lineage_theory[k] = tempt/read_depth_seq_global[k-1]*read_depth_seq_global[k]
-    
-    return read_num_lineage_theory
-
-
 
 
 
@@ -363,7 +299,8 @@ def fun_likelihood_lineage_opt(x):
     return -likelihood_log_lineage
 
 
-def calculate_likelihood_of_fitness_vector(fitness,observations,kappa):
+def calculate_likelihood_of_fitness_vector(fitness,observations,kappa,
+        total_reads,sum_term):
     """given a fitness value, calculate the likelihood of that
 
     Arguments:
@@ -373,7 +310,10 @@ def calculate_likelihood_of_fitness_vector(fitness,observations,kappa):
     """
 
     # generate expected counts
-    expected_counts = predict_counts(fitness,observations)
+
+
+    expected_counts = predict_counts(fitness,observations,
+        total_reads,sum_term)
 
     number_of_timepoints = len(observations)
 
@@ -457,7 +397,9 @@ def fun_x_est_lineage(i):
             x0=x0_global[i],
             args=(
                 read_num_measure_global[i,:] ,
-                kappa_global
+                kappa_global,
+                read_depth_seq_global,
+                sum_term_global
                 ),
             method='Nelder-Mead',
             options={'ftol': 1e-8, 'disp': False, 'maxiter': 500}
@@ -583,7 +525,9 @@ def main():
         if fitness_type_global == 'w':
             x0_global[x0_global <= -1] = -1 + 1e-7
     
-        parameter_output = estimate_parameters(x0_global)
+        parameter_output = estimate_parameters(x0_global,args.processes,
+                np.sum(read_num_measure_global, axis=0)
+                )
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
         sum_term_global = parameter_output['Sum_Term']
         likelihood_log = parameter_output['Likelihood_Log']
