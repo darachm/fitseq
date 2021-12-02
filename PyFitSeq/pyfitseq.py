@@ -26,7 +26,7 @@ fitness_type_global = None
 
 
 
-def estimate_parameters(x,processes,total_reads):
+def estimate_parameters(x,processes,total_reads,max_chunk_size):
     """Estimate parameters?
     This copied over from the old old old PyFitSeq - dunno if still relevant
     but it's missing in this version !!!
@@ -136,7 +136,12 @@ def estimate_parameters(x,processes,total_reads):
                 tqdm(
                     [ (x0_global[i],read_num_measure_global[i,:],kappa_global,total_reads,sum_term) 
                         for i in range(read_num_measure_global.shape[0]) ]
-                    ) )
+                    ) ,
+                chunksize=np.minimum(
+                        max_chunk_size,
+                        int(len(x)/processes)+1
+                        )
+                )
     else:
         other_result = list(itertools.starmap(
                 calculate_likelihood_of_fitness_vector, 
@@ -367,6 +372,9 @@ def main():
         help='The path (default None) to which to write the mean fitnesses'
             'calculated per sample.')
 
+    parser.add_argument('--max-chunk-size', type=int, default=None,
+        help='The max chunksize for parallelism')
+
     args = parser.parse_args()
     read_num_measure_global = np.array(pd.read_csv(args.input, header=None), dtype=float)
     t_seq_global = np.array(args.t_seq, dtype=float)
@@ -413,7 +421,8 @@ def main():
 
     print(r'-- Estimating initial guesses of global parameters ',file=sys.stderr)
     parameter_output = estimate_parameters(x0_global,args.processes,
-            np.sum(read_num_measure_global, axis=0)
+            np.sum(read_num_measure_global, axis=0) ,
+            args.max_chunk_size
             )
     x_mean_global = parameter_output['Estimated_Mean_Fitness']
     sum_term_global = parameter_output['Sum_Term']
@@ -429,7 +438,14 @@ def main():
         if args.processes > 1:
             with Pool(args.processes) as pool_obj:
                 x0_global = np.array(
-                        pool_obj.map(fun_x_est_lineage, tqdm(range(lineages_num)))
+                        pool_obj.map(   
+                            fun_x_est_lineage, 
+                            tqdm(range(lineages_num)) ,
+                            chunksize=np.minimum(
+                                    args.max_chunk_size,
+                                    int(len(x0_global)/args.processes)+1
+                                )
+                            )
                         )
         else:
             x0_global = np.array(
@@ -438,7 +454,8 @@ def main():
 
         print(r'-- Re-estimating global parms',file=sys.stderr)
         parameter_output = estimate_parameters(x0_global,args.processes,
-                np.sum(read_num_measure_global, axis=0)
+                np.sum(read_num_measure_global, axis=0) ,
+                args.max_chunk_size
                 )
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
         sum_term_global = parameter_output['Sum_Term']
