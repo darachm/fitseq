@@ -17,7 +17,6 @@ import itertools
 x0_global = None
 read_num_measure_global = None
 kappa_global = None
-read_num_lineage_measure_global = None
 read_depth_seq_global = None
 t_seq_global = None
 seq_num_global = None
@@ -281,7 +280,6 @@ def fun_x_est_lineage(i):
     global x0_global
     global read_num_measure_global   
     global kappa_global
-    global read_num_lineage_measure_global
     global read_depth_seq_global
     global t_seq_global
     global seq_num_global
@@ -314,7 +312,6 @@ def main():
     global read_num_measure_global
     global read_num_measure_original
     global kappa_global
-    global read_num_lineage_measure_global
     global read_depth_seq_global
     global t_seq_global
     global seq_num_global
@@ -419,9 +416,10 @@ def main():
 
     x0_global = x0
 
+
     print(r'-- Estimating initial guesses of global parameters ',file=sys.stderr)
     parameter_output = estimate_parameters(x0_global,args.processes,
-            np.sum(read_num_measure_global, axis=0) ,
+            read_depth_seq_global,
             args.max_chunk_size
             )
     x_mean_global = parameter_output['Estimated_Mean_Fitness']
@@ -455,7 +453,7 @@ def main():
 
         print(r'-- Re-estimating global parms',file=sys.stderr)
         parameter_output = estimate_parameters(x0_global,args.processes,
-                np.sum(read_num_measure_global, axis=0) ,
+                read_depth_seq_global,
                 args.max_chunk_size
                 )
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
@@ -474,19 +472,46 @@ def main():
                 ):
             break
 
+    print(r'-- Calculating second derivatives around final fitness estimates',file=sys.stderr)
     # estimation error
-    second_derivative = np.zeros(lineages_num, dtype=float)
-    for i in range(lineages_num):
-        read_num_lineage_measure_global = read_num_measure_global[i,:]
-        second_derivative[i] = derivative(
-                calculate_likelihood_of_fitness_vector, 
-                    x0_global[i], dx=1e-6, n=2,
-                    args=(read_num_measure_global[i,:],kappa_global,
-                        np.sum(read_num_measure_global, axis=0) ,
-                        sum_term_global
-                        ) 
+    if args.processes > 1:
+        with Pool(args.processes) as pool_obj:
+            second_derivative = np.array(
+                    pool_obj.starmap(
+                        derivative, 
+                        tqdm( [ ( calculate_likelihood_of_fitness_vector,
+                                    x0_global[i], 1e-6, 2,
+                                    ( read_num_measure_global[i,:],
+                                        kappa_global, 
+                                        read_depth_seq_global,
+                                        sum_term_global )
+                                    ) for i in range(lineages_num) ] ) ,
+                        chunksize=np.minimum(
+                                args.max_chunk_size,
+                                int(lineages_num/args.processes)+1
+                                )
+                            )
+                        )
+    else:
+        second_derivative = np.array(
+                list(itertools.starmap(
+                        derivative, 
+                        tqdm( [ ( calculate_likelihood_of_fitness_vector,
+                                    x0_global[i], 1e-6, 2,
+                                    ( read_num_measure_global[i,:],
+                                        kappa_global, 
+                                        read_depth_seq_global,
+                                        sum_term_global ) 
+                                    ) for i in range(lineages_num) 
+                                ] 
+                            ) 
+                        )
                     )
+                )
+
     estimation_error = [ 1/i for i in np.sqrt(second_derivative) if i > 0 ]
+
+    print(r'-- Writing outputs',file=sys.stderr)
 
     read_num_theory = parameter_output['Estimated_Read_Number']
     if fitness_type_global == 'm':
