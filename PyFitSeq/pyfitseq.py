@@ -476,8 +476,7 @@ def main():
     # estimation error
     if args.processes > 1:
         with Pool(args.processes) as pool_obj:
-            second_derivative = np.array(
-                    pool_obj.starmap(
+            second_derivative = pool_obj.starmap(
                         derivative, 
                         tqdm( [ ( calculate_likelihood_of_fitness_vector,
                                     x0_global[i], 1e-6, 2,
@@ -491,10 +490,8 @@ def main():
                                 int(lineages_num/args.processes)+1
                                 )
                             )
-                        )
     else:
-        second_derivative = np.array(
-                list(itertools.starmap(
+        second_derivative = list(itertools.starmap(
                         derivative, 
                         tqdm( [ ( calculate_likelihood_of_fitness_vector,
                                     x0_global[i], 1e-6, 2,
@@ -507,9 +504,14 @@ def main():
                             ) 
                         )
                     )
-                )
 
-    estimation_error = [ 1/i for i in np.sqrt(second_derivative) if i > 0 ]
+    estimation_error = np.array(
+            [ 1/np.sqrt(i) 
+                if type(i) is np.double and np.sqrt(i) > 0 
+                else np.nan 
+                for i in second_derivative
+                ]
+            )
 
     print(r'-- Writing outputs',file=sys.stderr)
 
