@@ -521,7 +521,7 @@ def main():
 
     estimation_error = np.array(
             [ 1/np.sqrt(i) 
-                if type(i) is np.double and np.sqrt(i) > 0 
+                if type(i) is np.double and i > 0 and np.sqrt(i) is not None
                 else np.nan 
                 for i in second_derivative
                 ]
