@@ -276,7 +276,7 @@ def calculate_likelihood_of_fitness_vector(fitness,observations,kappa,
 
 
 ##################################################
-def fun_x_est_lineage(i):
+def fun_x_est_lineage(i,tolerance,maxiter):
     global x0_global
     global read_num_measure_global   
     global kappa_global
@@ -297,7 +297,7 @@ def fun_x_est_lineage(i):
                 sum_term_global
                 ),
             method='Nelder-Mead',
-            options={'ftol': 1e-8, 'disp': False, 'maxiter': 500}
+            options={'ftol': tolerance, 'disp': False, 'maxiter': maxiter}
             )
 
     return optimization_result['x'][0]
@@ -372,6 +372,14 @@ def main():
     parser.add_argument('--max-chunk-size', type=int, default=None,
         help='The max chunksize for parallelism')
 
+    parser.add_argument('--tolerance', type=float, default=1e-4,
+        help='The tolerance for the Nedler-Mead opitmization, default is 1e-4'
+            ' is default for minimize')
+
+    parser.add_argument('--maxopt', type=int, default=200,
+        help='Maximum iterations for within the Nedler-Mead opitmization, '
+            'default is 200')
+
     args = parser.parse_args()
     read_num_measure_global = np.array(pd.read_csv(args.input, header=None), dtype=float)
     t_seq_global = np.array(args.t_seq, dtype=float)
@@ -437,9 +445,10 @@ def main():
         if args.processes > 1:
             with Pool(args.processes) as pool_obj:
                 x0_global = np.array(
-                        pool_obj.map(   
+                        pool_obj.starmap(   
                             fun_x_est_lineage, 
-                            tqdm(range(lineages_num)) ,
+                            tqdm([ (i,args.tolerance,args.maxopt) 
+                                    for i in range(lineages_num) ]),
                             chunksize=np.minimum(
                                     args.max_chunk_size,
                                     int(len(x0_global)/args.processes)+1
@@ -448,7 +457,12 @@ def main():
                         )
         else:
             x0_global = np.array(
-                    list(map(fun_x_est_lineage, tqdm(range(lineages_num))))
+                    list(
+                        itertools.starmap(fun_x_est_lineage, 
+                            tqdm([ (i,args.tolerance,args.maxopt) 
+                                    for i in range(lineages_num) ])
+                            )
+                        )
                     )
 
         print(r'-- Re-estimating global parms',file=sys.stderr)
