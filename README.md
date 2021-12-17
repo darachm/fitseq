@@ -3,25 +3,14 @@
 
 # fitseq
 
-This is a utility for analyzing counts data of lineages to best estimate
-individual and population-average lineage fitness.
+Accurate pooled competition assays requires accounting for the changing
+population-average fitness in order toe best estimate the fitness of
+lineages within the pool.
+This utility does both by iterating between optimizations of per-lineage
+fitness given the average, and calculating the new average fitness.
 
-<!--
--->
-
-# Versions
-
-- PyFitSeq is a Python-based fitness estimation tool for pooled amplicon 
-    sequencing studies. 
-    The conceptual/math work and first implementation is described in the paper
-    [Unbiased Fitness Estimation of Pooled Barcode or Amplicon Sequencing Studies](https://doi.org/10.1016/j.cels.2018.09.004),
-    and this code is [available here](https://github.com/sashaflevy/Fit-Seq).
-- This was rewritten in python, [available here](https://github.com/FangfeiLi05/PyFitSeq)
-    and is a python-translated version of the MATLAB tool 
-    FitSeq above.
-- This repo is a fork of that python version to fix some bugs and tweak the 
-    speed, flexibility, and interface.
-    **Wrightian fitness does not yet work in this version**. Sorry.
+On a recent datasets of five timepoints for ~3.5 million lineages, 
+`fitseq` was finished within 4.5 hours (wall), using 20 cores and 4GB of RAM.
 
 If you use this software, please reference: [F. Li, et al. Unbiased Fitness Estimation of Pooled Barcode or Amplicon Sequencing Studies. Cell Systems, 7: 521-525 (2018)](https://doi.org/10.1016/j.cels.2018.09.004)
 
@@ -35,15 +24,17 @@ You can install from this git repo directly as:
 
 or from PyPi with:
 
-    python3 -m pip install fitseq
+    WELL NOT QUITE YET BUT SOON python3 -m pip install fitseq
 
 Install the latest development branch with something like:
 
     python3 -m pip install git+https://github.com/darachm/fitseq.git@dev
 
-Test intstallationg with:
+Test installation with:
 
     fitseq.py -h
+
+<!--
 
 ## Or don't install, use a container
 
@@ -65,6 +56,7 @@ or, download from the github container registry like so
 
 Built on a Thinkpad t480, so AVX instruction set.
 
+-->
 
 # Usage 
 
@@ -99,6 +91,49 @@ proceeds until the sum of negative log likelihood doesn't improve by at least
 0.1% over the previous step, at 100 iterations max.
 Then it writes the mean fitness values to that CSV, 
 and the rest to `test_output.csv`.
+
+### File formats
+
+#### Input file format
+
+This tool expects a comma-separated table (CSV) of your best estimate of
+lineage counts of the lineage, with one column per timepoint. 
+Each lineage is a row, and outputs are in the same order as the input.
+
+Something like:
+
+    21,7,2,0,0
+    35,71,34,38,12
+    5,9,1,0,0
+    3,8,4,3,1
+    12,10,11,1,0
+
+#### Output file format
+
+There are two outputs generated, the first is the per-lineage (per input row)
+fit parameters, some estimates of errors, 
+and the model-projected psuedo-count expectations for each timepoint.
+For example, *but rounded to 3 decimal places for tidy-ness*:
+
+    Estimated_Fitness,Estimation_Error,Likelihood_Log,Estimated_Read_Number_t0,Estimated_Read_Number_t1,Estimated_Read_Number_t2,Estimated_Read_Number_t3,Estimated_Read_Number_t4
+    -1.529,0.517,4.998,21.0,6.608,2.148,0.298,0.004
+    -0.274,0.189,21.556,35.0,38.661,76.501,17.801,5.471
+    -0.728,0.316,10.277,5.0,3.504,6.152,0.332,0.009
+    -0.194,0.252,10.379,3.0,3.588,9.333,2.267,0.467
+    -0.596,0.214,7.849,12.0,9.602,7.805,4.172,0.104
+    -2.942,1.591,2.233,5.0,0.383,0.007,0.003,0.000
+
+The headers are a bit long, I suppose. But they're informative...?
+
+There is also the optional (and strongly suggested!) output file of the
+mean fitness per timepoint, given as a CSV format with headers, such as:
+
+    Samples,Estimate_Mean_Fitness
+    0,0.0
+    1,0.3833658804427269
+    2,0.9907541206263276
+    3,1.0394387021430962
+    4,1.0542176653660411
 
 ### Options, from `pyfitseq.py -h`
 
@@ -203,4 +238,18 @@ For example:
 See `python evo_simulator.py --help` for a reminder...
 
 
+
+# History of version of this software.
+
+1. PyFitSeq is a Python-based fitness estimation tool for pooled amplicon 
+    sequencing studies. 
+    The conceptual/math work and first implementation is described in the paper
+    [Unbiased Fitness Estimation of Pooled Barcode or Amplicon Sequencing Studies](https://doi.org/10.1016/j.cels.2018.09.004),
+    and this code is [available here](https://github.com/sashaflevy/Fit-Seq).
+2. This was rewritten in python, [available here](https://github.com/FangfeiLi05/PyFitSeq)
+    and is a python-translated version of the MATLAB tool 
+    FitSeq above.
+3. This repo is a fork of that python version to fix some bugs and tweak the 
+    speed, flexibility, and interface.
+    **Wrightian fitness does not yet work in this version**. Sorry.
 
