@@ -276,7 +276,7 @@ def calculate_likelihood_of_fitness_vector(fitness,observations,kappa,
 
 
 ##################################################
-def fun_x_est_lineage(i,tolerance,maxiter):
+def fun_x_est_lineage(i,tolerance):
     global x0_global
     global read_num_measure_global   
     global kappa_global
@@ -297,7 +297,7 @@ def fun_x_est_lineage(i,tolerance,maxiter):
                 sum_term_global
                 ),
             method='BFGS',
-            options={'gtol':tolerance,'maxiter':maxiter}
+            options={'gtol':tolerance}
             )
 
     return optimization_result['x'][0]
@@ -323,62 +323,71 @@ def main():
 
     parser.add_argument('-p', '--processes', type=int, default=1,
         help='Number of processes to launch with multiprocessing')
+
+    parser.add_argument('--max-chunk-size', type=int, default=None,
+        help=('The max chunksize for parallelism, automatically set to '
+            'a roughly even split of lineages per chunk. Tune if you want to.')
+        )
     
     parser.add_argument('-i', '--input', type=str, required=True, 
-        help='a .csv file: with each column being the read number per '
-            'genotype at each sequenced time-point')
+        help=('The path to a header-less CSV file, where each column '
+            'contains the count of each lineage (each row is a lineage) '
+            'at that sample/timepoint.')
+        )
     
-    parser.add_argument('-t', '--t_seq', nargs='*', type=float,
-        help='sequenced time-points in number of generations')
-    
-    parser.add_argument('-m', '--max_iter_num', type=int, default=10,
-                        help='maximum number of iterations in the optimization')
+    parser.add_argument('--t-seq', '-t', nargs='*', required=True, type=float,
+        help=('The estimated "generations" of growth elapse at each sampled '
+            'timepoint. This is useful for scaling the fitness or using '
+            'unevenly spaced timepoints')
+        )
 
-    parser.add_argument('--min-iter', type=int, default=0,
-        help='Force FitSeq to run at least this many iterations in the '
-            'optimization')
-    parser.add_argument('--min-step','--minimum-step-size', 
-        type=float, default=0.0001,
-        help='Set a minimum fracitonal step size for improvement, if below '
-            'this then the optimization iterations terminate.')
-    
-    parser.add_argument('-k', '--kappa', type=float, default=2.5,
-        help='a noise parameter that characterizes the total '
-             'noise introduced by growth, cell transfer, DNA '
-             'extraction, PCR, and sequencing (To measure kappa '
-             'empirically, see the reference: [S. F. Levy et al. '
-             'Quantitative Evolutionary Dynamics Using '
-             'High-resolution Lineage Tracking. Nature, 519: '
-             '181–186 (2015)].)')
-    
-    parser.add_argument('-g', '--regression_num', type=int, default=2,
-        help='number of points used in the initial '
-             'linear-regression-based fitness estimate')
-    
-    parser.add_argument('-f', '--fitness_type', type=str, default='m', 
-        choices = ['m', 'w'],
-        help='type of fitness: Wrightian fitness (w), or '
-             'Malthusian fitness (m)')
-    
+
     parser.add_argument('-o', '--output', type=str, default=sys.stdout, 
         help='The path (default STDOUT) from which to output the fitnesses '
             'and errors and likelihoods and estimated reads. CSV format.')
 
-    parser.add_argument('-om', '--output-mean-fitness', type=str, 
+    parser.add_argument('--output-mean-fitness','-om', type=str, 
         default=None,
         help='The path (default None) to which to write the mean fitnesses'
             'calculated per sample.')
 
-    parser.add_argument('--max-chunk-size', type=int, default=None,
-        help='The max chunksize for parallelism')
+
+    parser.add_argument('--min-iter', type=int, default=10,
+        help='Force FitSeq to run at least this many iterations in the '
+            'optimization')
+
+    parser.add_argument('--max-iter-num', '-m', type=int, default=100,
+        help=('Maximum number of iterations in the optimization '
+            '(of optimizing population average fitness)')
+        )
+
+    parser.add_argument('--minimum-step-size', '--min-step',
+        type=float, default=0.0001,
+        help=('Set a minimum fracitonal step size for improvement, if below '
+            'this then the optimization iterations terminate.')
+        )
+    
+
+    parser.add_argument('--fitness-type', '-f', type=str, default='m', 
+        choices = ['m', 'w'],
+        help=('SORRY no choice, only Malthusian fitness (m) works. '
+            'But in later verions, '
+            'maybe we\'ll re-implement Wrightian fitness (w).')
+        )
+
+    parser.add_argument('-k', '--kappa', type=float, default=2.5,
+        help=('a noise parameter that characterizes the total '
+             'noise introduced. For estimateion, see doi:10.1038/nature14279')
+        )
 
     parser.add_argument('--gtol', type=float, default=1e-5,
         help='The gradient tolerance parameter for the BFGS opitmization, '
             'default (from SciPy) is 1e-5')
-
-    parser.add_argument('--maxopt', type=int, default=200,
-        help='Maximum iterations for within the Nedler-Mead opitmization, '
-            'default is 200')
+    
+    parser.add_argument('-g', '--regression-num', type=int, default=2,
+        help='number of points used in the initial '
+             'linear-regression-based fitness estimate')
+    
 
     args = parser.parse_args()
     read_num_measure_global = np.array(pd.read_csv(args.input, header=None), dtype=float)
@@ -388,9 +397,16 @@ def main():
     kappa_global = args.kappa
     regression_num = args.regression_num
     fitness_type_global = args.fitness_type
-    minimum_step_size = args.min_step
-    
+    minimum_step_size = args.minimum_step_size
+
     lineages_num, seq_num_global = read_num_measure_global.shape
+
+    if (args.max_chunk_size is None):
+        max_chunk_size = int(lineages_num/args.processes)+1
+    else:
+        max_chunk_size = int(np.minimum(args.max_chunk_size,lineages_num))
+    print(max_chunk_size)
+    
 
     if fitness_type_global == 'w':
         exit("Wrightian fitness does not yet work in this version")
@@ -428,7 +444,7 @@ def main():
     print(r'-- Estimating initial guesses of global parameters ',file=sys.stderr)
     parameter_output = estimate_parameters(x0_global,args.processes,
             read_depth_seq_global,
-            args.max_chunk_size
+            max_chunk_size
             )
     x_mean_global = parameter_output['Estimated_Mean_Fitness']
     sum_term_global = parameter_output['Sum_Term']
@@ -447,10 +463,10 @@ def main():
                 x0_global = np.array(
                         pool_obj.starmap(   
                             fun_x_est_lineage, 
-                            tqdm([ (i,args.gtol,args.maxopt) 
+                            tqdm([ (i,args.gtol) 
                                     for i in range(lineages_num) ]),
                             chunksize=np.minimum(
-                                    args.max_chunk_size,
+                                    max_chunk_size,
                                     int(len(x0_global)/args.processes)+1
                                 )
                             )
@@ -459,7 +475,7 @@ def main():
             x0_global = np.array(
                     list(
                         itertools.starmap(fun_x_est_lineage, 
-                            tqdm([ (i,args.gtol,args.maxopt) 
+                            tqdm([ (i,args.gtol) 
                                     for i in range(lineages_num) ])
                             )
                         )
@@ -468,7 +484,7 @@ def main():
         print(r'-- Re-estimating global parms',file=sys.stderr)
         parameter_output = estimate_parameters(x0_global,args.processes,
                 read_depth_seq_global,
-                args.max_chunk_size
+                max_chunk_size
                 )
         x_mean_global = parameter_output['Estimated_Mean_Fitness']
         sum_term_global = parameter_output['Sum_Term']
@@ -500,7 +516,7 @@ def main():
                                         sum_term_global )
                                     ) for i in range(lineages_num) ] ) ,
                         chunksize=np.minimum(
-                                args.max_chunk_size,
+                                max_chunk_size,
                                 int(lineages_num/args.processes)+1
                                 )
                             )
