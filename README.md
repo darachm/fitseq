@@ -73,7 +73,7 @@ a row, and outputs are in the same order as the input.
 
 For an example using data distributed in this repo, try:
 
-    python3 pyfitseq.py \
+    python3 fitseq.py \
         --input testing/data/ppiseq_test_counts_1000.csv \
         --processes 8 \
         --t-seq 0 1 2 3 4 \
@@ -135,7 +135,7 @@ mean fitness per timepoint, given as a CSV format with headers, such as:
     3,1.0394387021430962
     4,1.0542176653660411
 
-### Options, from `pyfitseq.py -h`
+### Options, from `fitseq.py -h`
 
 #### input
 
