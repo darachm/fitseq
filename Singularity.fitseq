@@ -1,0 +1,29 @@
+Bootstrap: docker
+From: darachm/fitseq:latest
+
+%labels
+MAINTAINER darachm
+
+%help
+
+    This container is for running FitSeq, specifically "PyFitSeq", similar
+    to as described in:
+
+        F. Li, et al. Unbiased Fitness Estimation of Pooled Barcode or Amplicon
+        Sequencing Studies. Cell Systems, 7: 521-525 (2018)
+        doi.org/10.1016/j.cels.2018.09.004
+
+    The two scripts are linked here in /usr/bin, and that's:
+
+        - evo_simulator.py
+        - pyfitseq.py
+
+    Should be accessible immediately from the exec line, so something like this
+    to use them it:
+
+        singularity exec fitseq_container.simg pyfitseq.py -h
+
+%test
+
+    pyfitseq.py -h
+

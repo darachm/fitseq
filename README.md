@@ -1,4 +1,4 @@
-[![Python 3.8](https://img.shields.io/badge/python-3.8-green.svg)](https://www.python.org/)
+[![Python 3.9](https://img.shields.io/badge/python-3.9-green.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 # fitseq
@@ -22,9 +22,11 @@ You can install from this git repo directly as:
 
     python3 -m pip install git+https://github.com/darachm/fitseq.git
 
+<!--
 or from PyPi with:
 
     WELL NOT QUITE YET BUT SOON python3 -m pip install fitseq
+-->
 
 Install the latest development branch with something like:
 
@@ -34,13 +36,37 @@ Test installation with:
 
     fitseq.py -h
 
-<!--
-
 ## Or don't install, use a container
 
-Use the `Dockerfile` in this repo like so:
+### Docker
 
-    TODO gotta write it
+This repository has a `Dockerfile` to build off the main branch of this repo,
+like so
+
+    docker build -t darachm/fitseq ./ 
+
+Or you should be able to pull it off of Dockerhub like:
+
+    docker run darachm/fitseq:latest pyfitseq.py -h
+
+You can then use that, with a Docker installation like so:
+
+    docker run \
+        --mount type=bind,source=$(pwd)/testing,target=/testing \
+        darachm/fitseq \
+        pyfitseq.py \
+            -i testing/data/ppiseq_test_counts_1000.csv \
+            -p 8 -t 0 1 2 3 4 \
+            -m 20 --min-step 0.001 \
+            --output-mean-fitness testing/output/test_means.csv \
+            -o testing/output/test_out.csv
+
+Note that you need to `--mount` the directory with the inputs in a folder,
+and use that in the command. Directories on containers... yeah.
+
+I think Singularity is more intuitive/accessible for most folks...
+
+### Singularity
 
 On a multi-user HPC? Want to get an achive-ready monolithic stable container?
 [Singularity](https://sylabs.io/guides/3.8/user-guide/quick_start.html#quick-installation-steps)
@@ -48,14 +74,28 @@ is a container system for scientific multi-user HPC computing and archiving.
 You can build your own container from the Singularity file in this repo using
 a command like:
 
-    singularity build fitseq.sif Singularity.fitseq
+    sudo singularity build fitseq.sif Singularity.fitseq
 
+This is just turning the docker image into a Singularity image. 
+Just so you know.
+
+Run with something like:
+
+    singularity exec \
+        --bind PyFitSeq:/PyFitSeq \
+        fitseq.sif \
+        pyfitseq.py \
+            -i testing/data/ppiseq_test_counts_1000.csv \
+            -p 8 -t 0 1 2 3 4 \
+            -m 20 --min-step 0.001 \
+            --output-mean-fitness testing/output/test_means.csv \
+            -o testing/output/test_out.csv
+            #2> testing/output/test.err
+
+<!--
 or, download from the github container registry like so
 
     TODO gotta figure this out
-
-Built on a Thinkpad t480, so AVX instruction set.
-
 -->
 
 # Usage 

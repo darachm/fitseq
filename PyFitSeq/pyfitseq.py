@@ -401,11 +401,11 @@ def main():
 
     lineages_num, seq_num_global = read_num_measure_global.shape
 
-    if (args.max_chunk_size is None):
+    max_chunk_size = args.max_chunk_size
+    if max_chunk_size is None:
         max_chunk_size = int(lineages_num/args.processes)+1
     else:
-        max_chunk_size = int(np.minimum(args.max_chunk_size,lineages_num))
-    print(max_chunk_size)
+        max_chunk_size = int(np.minimum(max_chunk_size,lineages_num))
     
 
     if fitness_type_global == 'w':
