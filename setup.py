@@ -5,7 +5,7 @@ with open('README.md','r') as fh:
 
 setup(
     name='PyFitSeq',
-    version='1.2.0-rc1',
+    version='1.5.0-rc1',
     description='python version of FitSeq (the latest)',
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
