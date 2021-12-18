@@ -1,5 +1,7 @@
-# Run from the base repo directory, so bash testing/test.sh
-python3 PyFitSeq/pyfitseq.py 
+# Run from the base repo directory, so bash testing/test_singularity.sh
+# After building the image of course
+singularity exec --bind PyFitSeq:/PyFitSeq fitseq.sif \
+    /PyFitSeq/pyfitseq.py \
         -i testing/data/ppiseq_test_counts_1000.csv \
         -p 8 -t 0 1 2 3 4 \
         -m 20 --min-step 0.001 \
