@@ -9,10 +9,16 @@ lineages within the pool.
 This utility does both by iterating between optimizations of per-lineage
 fitness given the average, and calculating the new average fitness.
 
+The core concept and architecture is written by FangFei Li (@FangFei05).
+This fork is just tweaking the interface and metrics for my personal use,
+but if anyone else wants to use it I can offer limited help.
+
 On a recent datasets of five timepoints for ~3.5 million lineages, 
 `fitseq` was finished within 4.5 hours (wall), using 20 cores and 4GB of RAM.
 
 If you use this software, please reference: [F. Li, et al. Unbiased Fitness Estimation of Pooled Barcode or Amplicon Sequencing Studies. Cell Systems, 7: 521-525 (2018)](https://doi.org/10.1016/j.cels.2018.09.004)
+
+
 
 # Installation
 
