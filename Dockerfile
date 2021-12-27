@@ -6,4 +6,4 @@ ENV DEBIAN_FRONTEND="noninteractive"
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
 ENV LANGUAGE=C.UTF-8
-RUN python3 -m pip install git+https://github.com/darachm/PyFitSeq.git
+RUN python3 -m pip install git+https://github.com/darachm/fitseq.git

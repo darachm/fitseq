@@ -5,7 +5,7 @@ with open('README.md','r') as fh:
 
 setup(
     name='fitseq',
-    version='1.5.0-rc1',
+    version='1.5.0',
     description=(
         'A utility for fitting lineage fitnesses within a pooled competition '
         'experiment, achieved by iteratively optimizing models of '

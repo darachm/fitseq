@@ -1,7 +1,7 @@
 # Run from the base repo directory, so bash testing/test_docker.sh
 docker run \
     --mount type=bind,source=$(pwd)/testing,target=/testing \
-    darachm/fitseq pyfitseq.py \
+    darachm/fitseq fitseq.py \
         -i testing/data/ppiseq_test_counts_1000.csv \
         -p 8 -t 0 1 2 3 4 \
         -m 20 --min-step 0.001 \

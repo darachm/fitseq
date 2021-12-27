@@ -47,14 +47,14 @@ like so
 
 Or you should be able to pull it off of Dockerhub like:
 
-    docker run darachm/fitseq:latest pyfitseq.py -h
+    docker run darachm/fitseq:latest fitseq.py -h
 
 You can then use that, with a Docker installation like so:
 
     docker run \
         --mount type=bind,source=$(pwd)/testing,target=/testing \
         darachm/fitseq \
-        pyfitseq.py \
+        fitseq.py \
             -i testing/data/ppiseq_test_counts_1000.csv \
             -p 8 -t 0 1 2 3 4 \
             -m 20 --min-step 0.001 \
@@ -82,9 +82,9 @@ Just so you know.
 Run with something like:
 
     singularity exec \
-        --bind PyFitSeq:/PyFitSeq \
+        --bind fitseq:/fitseq \
         fitseq.sif \
-        pyfitseq.py \
+        fitseq.py \
             -i testing/data/ppiseq_test_counts_1000.csv \
             -p 8 -t 0 1 2 3 4 \
             -m 20 --min-step 0.001 \
@@ -291,5 +291,7 @@ See `python evo_simulator.py --help` for a reminder...
     FitSeq above.
 3. This repo is a fork of that python version to fix some bugs and tweak the 
     speed, flexibility, and interface.
+    Also, changed the name to `fitseq` to reflect that it's the current
+    development version.
     **Wrightian fitness does not yet work in this version**. Sorry.
 
