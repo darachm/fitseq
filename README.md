@@ -82,21 +82,18 @@ a command like:
 
     sudo singularity build fitseq.sif Singularity.fitseq
 
-This is just turning the docker image into a Singularity image. 
-Just so you know.
+( This is just turning the docker image into a Singularity image. 
+Just so you know. )
 
-Run with something like:
+Then put it where you need it, and run with something like:
 
-    singularity exec \
-        --bind fitseq:/fitseq \
-        fitseq.sif \
+    singularity exec fitseq.sif \
         fitseq.py \
             -i testing/data/ppiseq_test_counts_1000.csv \
             -p 8 -t 0 1 2 3 4 \
             -m 20 --min-step 0.001 \
             --output-mean-fitness testing/output/test_means.csv \
             -o testing/output/test_out.csv
-            #2> testing/output/test.err
 
 <!--
 or, download from the github container registry like so
@@ -157,7 +154,7 @@ Something like:
 #### Output file format
 
 There are two outputs generated, the first is the per-lineage (per input row)
-fit parameters, some estimates of errors, 
+fit parameters, an estimate of error of the optimization process[^eerror], 
 and the model-projected psuedo-count expectations for each timepoint.
 For example, *but rounded to 3 decimal places for tidy-ness*:
 
@@ -170,6 +167,12 @@ For example, *but rounded to 3 decimal places for tidy-ness*:
     -2.942,1.591,2.233,5.0,0.383,0.007,0.003,0.000
 
 The headers are a bit long, I suppose. But they're informative...?
+
+[^eerror]: The "Estimation_Error" is probably not what you're expecting.
+It's the second derivative of the change in sum-negative-log-likelihood
+of this lineage's optimization. So that might not be what you're wanting to
+use to filter lineages. You can however use the "Estimated" counts to
+calculate an R^2, have fun.
 
 There is also the optional (and strongly suggested!) output file of the
 mean fitness per timepoint, given as a CSV format with headers, such as:
@@ -301,3 +304,5 @@ See `python evo_simulator.py --help` for a reminder...
     development version.
     **Wrightian fitness does not yet work in this version**. Sorry.
 
+# Run from the base repo directory, so bash testing/test_singularity.sh
+# After building the image of course

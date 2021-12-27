@@ -1,5 +1,5 @@
 Bootstrap: docker
-From: darachm/fitseq:latest
+From: darachm/fitseq:v1.5.0
 
 %labels
 MAINTAINER darachm
